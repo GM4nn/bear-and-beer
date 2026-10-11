@@ -9,13 +9,17 @@ var jugadores: Node2D
 var inicio: Marker2D
 var aparecedor: MultiplayerSpawner
 var estacion: Node2D
+var jefe: Node2D
 var _auto := false
+var _regresando_sala := false
 
 @onready var ayuda: Label = $UI/Ayuda
 @onready var mision: Label = $UI/Mision
+@onready var barra_jefe: Control = $UI/Jefe
 @onready var aviso: Label = $UI/Aviso
 @onready var campo_nombre: LineEdit = $UI/Menu/Nombre
 @onready var campo_ip: LineEdit = $UI/Unirse/IP
+@onready var hud: Control = $UI/HUD
 @onready var pantallas := {
 	"menu": $UI/Menu, "unirse": $UI/Unirse, "opciones": $UI/Opciones, "sala": $UI/Sala,
 }
@@ -23,6 +27,8 @@ var _auto := false
 
 func _ready() -> void:
 	_usar_bosque($Juego)
+	hud.volver_sala.connect(_preparar_sala)
+	hud.salir.connect(_volver_al_menu.bind(""))
 
 	$UI/Menu/Crear.pressed.connect(_crear_partida)
 	$UI/Menu/Unirse.pressed.connect(_mostrar.bind("unirse"))
@@ -63,8 +69,12 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _process(_delta: float) -> void:
+	barra_jefe.visible = juego.visible and jefe.activa
+	if barra_jefe.visible:
+		$UI/Jefe/Texto.text = jefe.nombre_y_fase()
+		$UI/Jefe/Barra.size.x = $UI/Jefe/Fondo.size.x * jefe.vida / jefe.vida_max
 	if juego.visible:
-		mision.text = estacion.texto_mision()
+		mision.text = jefe.texto() if jefe.activa else estacion.texto_mision()
 
 
 func _mostrar(pantalla: String) -> void:
@@ -73,6 +83,9 @@ func _mostrar(pantalla: String) -> void:
 	juego.visible = pantalla == "juego"
 	ayuda.visible = pantalla == "juego"
 	mision.visible = pantalla == "juego"
+	hud.visible = pantalla == "juego"
+	if pantalla != "juego":
+		hud.limpiar()
 	aviso.text = ""
 
 
@@ -82,6 +95,8 @@ func _usar_bosque(bosque: Node2D) -> void:
 	inicio = bosque.get_node("Inicio")
 	aparecedor = bosque.get_node("Aparecedor")
 	estacion = bosque.get_node("Mundo/Estacion")
+	jefe = bosque.get_node("Mundo/MamaOsa")
+	bosque.get_node("Partida").finalizo.connect(_fin_ronda)
 	aparecedor.spawn_function = _crear_jugador
 
 
@@ -103,6 +118,39 @@ func _crear_partida() -> void:
 		return
 	print("Partida creada en el puerto %d" % Red.puerto)
 	_mostrar("sala")
+
+
+func _fin_ronda(victoria: bool, filas: Array) -> void:
+	hud.mostrar_resultados(victoria, filas)
+
+
+func _preparar_sala() -> void:
+	if not multiplayer.is_server() or _regresando_sala or not juego.get_node("Partida").finalizada:
+		return
+	_regresando_sala = true
+	# Desaparecer primero los nodos replicados. Así los clientes procesan sus
+	# despawns antes de que la RPC siguiente sustituya el bosque completo.
+	for j in jugadores.get_children():
+		j.queue_free()
+	await get_tree().process_frame
+	await get_tree().process_frame
+	_volver_sala.rpc()
+
+
+@rpc("authority", "call_local", "reliable")
+func _volver_sala() -> void:
+	if not juego.get_node("Partida").finalizada:
+		return
+	_auto = false
+	_regresando_sala = false
+	_reiniciar_bosque()
+	for datos in Red.jugadores.values():
+		datos.listo = false
+	_mostrar("sala")
+	Red.jugadores_cambiaron.emit()
+	if multiplayer.is_server():
+		multiplayer.multiplayer_peer.refuse_new_connections = false
+		Red._sincronizar.rpc(Red.jugadores)
 
 
 func _unirse() -> void:

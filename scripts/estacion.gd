@@ -23,6 +23,8 @@ var alimento := 0.0
 var tiempo := TIEMPO_LIMITE
 ## Los oseznos ya comieron: misión cumplida.
 var alimentados := false
+## Vida de la olla durante la pelea; si se rompe, Mamá Osa se enfurece.
+var vida_olla := 100
 
 var _susto := 0.0
 
@@ -37,6 +39,26 @@ var _susto := 0.0
 
 func _ready() -> void:
 	add_to_group("estacion")
+	$GolpeOlla.golpeado.connect(danar_olla.bind(10))
+	$GolpeOseznos.golpeado.connect(_pegaron_a_osezno)
+
+
+## La llama el anfitrión: daño a la olla por golpes de jugadores o del jefe.
+func danar_olla(dano: int) -> void:
+	if not alimentados or vida_olla <= 0:
+		return
+	vida_olla = maxi(vida_olla - dano, 0)
+	if vida_olla == 0:
+		_jefe().enfurecer("rompieron la olla")
+
+
+func _pegaron_a_osezno() -> void:
+	if alimentados:
+		_jefe().enfurecer("le pegaron a un osezno")
+
+
+func _jefe() -> Node2D:
+	return get_tree().get_first_node_in_group("jefe")
 
 
 func entregadas() -> Array:
@@ -68,7 +90,7 @@ func texto_mision() -> String:
 	if alimentados:
 		return "¡Los oseznos comieron y ya lloran por su mamá! Mamá Osa viene en camino."
 	if _susto > 0.0:
-		return "¡Mamá Osa llegó y sus oseznos seguían con hambre! Acabó con todos. A cocinar otra vez."
+		return "¡Mamá Osa llegó y sus oseznos seguían con hambre! El equipo cayó."
 	if terminada:
 		return "¡Denles la papilla a los oseznos! Mantengan E junto a ellos: %d%%      Mamá Osa llega en %d s" % [alimento * 100.0, ceili(tiempo)]
 	if completa():
@@ -81,7 +103,7 @@ func texto_mision() -> String:
 
 
 func _physics_process(delta: float) -> void:
-	if not multiplayer.is_server() or alimentados or not completa():
+	if not multiplayer.is_server() or alimentados or not completa() or get_tree().get_first_node_in_group("partida").finalizada:
 		return
 	if not terminada:
 		progreso = _llenar(progreso, _ayudando(position, RADIO), TIEMPO, delta)
@@ -98,7 +120,7 @@ func _physics_process(delta: float) -> void:
 	elif tiempo <= 0.0:
 		print("No alimentaron a los oseznos a tiempo: Mamá Osa acaba con todos")
 		for j in get_tree().get_nodes_in_group("jugadores"):
-			j.recibir_dano.rpc(9999)
+			j._perder_vida(9999)
 		# Se echa a perder la papilla: hay que volver a cocinarla.
 		progreso = 0.0
 		terminada = false
@@ -115,7 +137,7 @@ func _process(delta: float) -> void:
 	barra_oseznos_fondo.visible = terminada and not alimentados
 	barra_oseznos.visible = barra_oseznos_fondo.visible
 	barra_oseznos.size.x = barra_oseznos_fondo.size.x * alimento
-	papilla.visible = terminada
+	papilla.visible = terminada and vida_olla > 0
 	llanto.visible = terminada
 	llanto.text = "¡BUAAAA! ¡MAMÁ!" if alimentados else "¡HAMBRE!"
 	mama_osa.visible = _susto > 0.0
@@ -125,7 +147,7 @@ func _process(delta: float) -> void:
 func _ayudando(donde: Vector2, radio: float) -> int:
 	var cuantos := 0
 	for j: Node2D in get_tree().get_nodes_in_group("jugadores"):
-		if j.manteniendo and j.position.distance_to(donde) <= radio:
+		if j.manteniendo and j.puede_ayudar() and j.companero_caido() == null and j.position.distance_to(donde) <= radio:
 			cuantos += 1
 	return cuantos
 

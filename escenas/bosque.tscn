@@ -1,10 +1,12 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=12 format=3]
 
 [ext_resource type="PackedScene" path="res://escenas/arbol.tscn" id="1"]
 [ext_resource type="PackedScene" path="res://escenas/roca.tscn" id="2"]
 [ext_resource type="PackedScene" path="res://escenas/pieza.tscn" id="3"]
 [ext_resource type="PackedScene" path="res://escenas/estacion.tscn" id="4"]
 [ext_resource type="PackedScene" path="res://escenas/abejas.tscn" id="5"]
+[ext_resource type="PackedScene" path="res://escenas/mama_osa.tscn" id="6"]
+[ext_resource type="Script" path="res://scripts/partida.gd" id="7"]
 
 [sub_resource type="RectangleShape2D" id="borde_largo"]
 size = Vector2(8000, 40)
@@ -19,6 +21,9 @@ size = Vector2(2000, 150)
 size = Vector2(130, 16)
 
 [node name="Bosque" type="Node2D"]
+
+[node name="Partida" type="Node" parent="."]
+script = ExtResource("7")
 
 [node name="Suelo" type="Node2D" parent="."]
 z_index = -10
@@ -352,6 +357,12 @@ miel = NodePath("../Miel")
 [node name="Abejas4" parent="Mundo" instance=ExtResource("5")]
 position = Vector2(6300, 630)
 miel = NodePath("../Miel")
+
+[node name="MamaOsa" parent="Mundo" instance=ExtResource("6")]
+position = Vector2(6180, 430)
+
+[node name="ReaparecerFogata" type="Marker2D" parent="." groups=["reaparicion"]]
+position = Vector2(5250, 590)
 
 [node name="ReaparecerCampamento" type="Marker2D" parent="." groups=["reaparicion"]]
 position = Vector2(380, 510)

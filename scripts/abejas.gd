@@ -1,6 +1,7 @@
 extends Node2D
-## Enjambre de un panal. Ataca a quien se le acerque y no se calma hasta que
-## los oseznos comen. Un golpe lo aturde un momento.
+## Enjambre de un panal. Ataca a quien se le acerque; durante la pelea contra
+## el jefe sigue atacando con menos fuerza y solo se calma cuando el jefe cae.
+## Un golpe lo aturde un momento.
 ## Lo mueve el anfitrión; los demás solo reciben su posición.
 
 const VELOCIDAD := 185.0
@@ -10,6 +11,10 @@ const RADIO_PERSECUCION := 480.0
 const DANO := 3
 const ESPERA_PIQUETE := 0.8
 const ATURDIDO := 2.5
+# Durante la pelea contra el jefe: más lentas, pican menos seguido y más suave.
+const FRENO_EN_PELEA := 0.75
+const DANO_EN_PELEA := 2
+const ESPERA_PIQUETE_EN_PELEA := 1.6
 
 @export var miel: NodePath
 ## El enjambre del panal de la miel, además, persigue a quien la carga, esté
@@ -18,6 +23,8 @@ const ATURDIDO := 2.5
 
 ## Están persiguiendo a alguien.
 var activas := false
+## Medio ancho extra para que los golpes las alcancen.
+var ancho := 0.0
 
 var _casa := Vector2.ZERO
 var _espera := 0.0
@@ -43,7 +50,7 @@ func _ready() -> void:
 
 
 func _physics_process(delta: float) -> void:
-	if not multiplayer.is_server():
+	if not multiplayer.is_server() or get_tree().get_first_node_in_group("partida").finalizada:
 		return
 	var pieza: Node2D = get_node(miel)
 	var estacion := get_tree().get_first_node_in_group("estacion")
@@ -56,20 +63,28 @@ func _physics_process(delta: float) -> void:
 	if _aturdidas > 0.0:
 		return
 
+	# Durante la pelea contra el jefe siguen molestando, pero con menos ganas;
+	# se calman del todo cuando el jefe cae.
+	var jefe := get_tree().get_first_node_in_group("jefe")
+	var en_pelea: bool = estacion != null and estacion.alimentados
+	var calmadas: bool = en_pelea and (jefe == null or jefe.estado == "derrotada")
+
 	var objetivo: Node2D = null
-	if not (estacion and estacion.alimentados):
-		if _furiosas:
+	if not calmadas:
+		if _furiosas and not en_pelea:
 			objetivo = get_node_or_null("../Jugadores/%d" % pieza.portador)
 		if objetivo == null:
 			objetivo = _buscar_presa()
+	if objetivo != null and objetivo.caido:
+		objetivo = null
 	if objetivo != null and not activas:
 		print("%s ataca a %s" % [name, objetivo.name])
 	activas = objetivo != null
 	var destino := objetivo.position if objetivo else _casa
-	position = position.move_toward(destino, VELOCIDAD * delta)
+	position = position.move_toward(destino, VELOCIDAD * (FRENO_EN_PELEA if en_pelea else 1.0) * delta)
 	if objetivo and position.distance_to(destino) <= ALCANCE and _espera <= 0.0:
-		_espera = ESPERA_PIQUETE
-		objetivo.recibir_dano.rpc(DANO)
+		_espera = ESPERA_PIQUETE_EN_PELEA if en_pelea else ESPERA_PIQUETE
+		objetivo.recibir_dano(DANO_EN_PELEA if en_pelea else DANO)
 
 
 func _process(_delta: float) -> void:
@@ -78,7 +93,7 @@ func _process(_delta: float) -> void:
 
 
 ## La llama el anfitrión cuando un jugador le pega al enjambre.
-func golpeada(dir: int) -> void:
+func golpeada(dir: int, _quien: Node2D) -> void:
 	_aturdidas = ATURDIDO
 	position.x += dir * 50.0
 
@@ -87,10 +102,12 @@ func golpeada(dir: int) -> void:
 # enjambre de la miel, una vez furioso, cuida la zona donde ande y no su panal.
 func _buscar_presa() -> Node2D:
 	var centro := position if _furiosas else _casa
-	if is_instance_valid(_presa) and centro.distance_to(_presa.position) <= RADIO_PERSECUCION:
+	if is_instance_valid(_presa) and not _presa.caido and centro.distance_to(_presa.position) <= RADIO_PERSECUCION:
 		return _presa
 	_presa = null
 	for j: Node2D in get_tree().get_nodes_in_group("jugadores"):
+		if j.caido:
+			continue
 		var lejos := centro.distance_to(j.position)
 		if lejos <= RADIO_DETECCION and (_presa == null or lejos < centro.distance_to(_presa.position)):
 			_presa = j

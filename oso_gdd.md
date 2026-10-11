@@ -1,6 +1,6 @@
 # BearAndBeer — Documento de diseño (GDD)
 
-> Versión 0.3 — Octubre 2026
+> Versión 0.4 — Octubre 2026
 > Las secciones marcadas con **[DECIDIR]** están pendientes.
 
 ---
@@ -93,7 +93,7 @@ Cinemática → Tutorial → Mamá Osa → El Abuelo → El Tío → La Prima �
 | Levantar compañero caído | Mantener E | Mantener Y |
 
 **Reglas:**
-- Vida por jugador. **[DECIDIR] cantidad**
+- **100 puntos de vida máxima por jugador**, iguales para todos y sin configuración en la sala. El anfitrión calcula y sincroniza automáticamente el daño y las muertes.
 - **Te curas tomando cerveza.**
 - Al perder la vida quedas **caído**; un compañero te levanta en unos segundos.
 - **Fuego amigo activado** (los golpes y objetos sí les pegan a tus compañeros).
@@ -112,6 +112,18 @@ Tomar cerveza **te cura**, pero sube tu medidor de borrachera. Tomar tarda un pa
 - El medidor **baja poco a poco** con el tiempo.
 - Si te pasas, **vomitas**: quedas aturdido unos segundos (y el vómito hace resbalar a los demás).
 - **Estrategia:** curarse ayuda, pero si todos se curan de más, nadie camina derecho.
+
+### Valores del prototipo implementado (ajustables tras probar con amigos)
+- **Recoger cerveza:** E/Y junto a una botella del mapa; máximo 6 en el inventario (un six-pack). Hay seis botellas juntas cerca del campamento para probar las mecánicas desde el inicio. Las botellas vuelven a aparecer tras 25 segundos para permitir intentos largos.
+- **Beber:** Q/RB, con las manos libres y en el suelo. Tarda 2 segundos, inmoviliza y cura 35 puntos, hasta un máximo de 100. La botella se consume al terminar; recibir daño interrumpe la bebida sin curar ni gastar la botella, con un aviso en el HUD.
+- **Borrachera:** cada bebida terminada añade 30 puntos. Permanece 12 segundos tras la última bebida y después baja 0.5 por segundo cuando no se bebe. Los niveles empiezan en 0, 25, 50 y 75 puntos; el daño es 10, 15, 22 y 30 respectivamente. Bebiendo seguido desde sobrio: primera chela alegre, segunda pedo, tercera hasta atrás y cuarta vómito. El HUD muestra el valor numérico del medidor y avisa cuando faltan chelas.
+- **Torpeza:** tambaleo creciente; en nivel 2 hay un 20% de probabilidad de golpear hacia el lado equivocado. En nivel 3 se reduce la velocidad y el golpe normal se convierte en **"Ven pa'cá"**, con más alcance y empujón, pero una espera de 0.7 segundos.
+- **Sueño y vómito:** mantenerse 6 segundos en nivel 3, en el suelo y sin beber, rodar ni estar aturdido, puede dejarte dormido 2.5 segundos. Llegar a 100 puntos provoca vómito durante 2.5 segundos y baja el medidor a 70. El charco dura 12 segundos y hace resbalar a quien lo pisa; se puede saltar o esquivar.
+- **Caído y reanimación:** a 0 de vida sueltas la pieza y quedas inmóvil. Un compañero con las manos libres mantiene E/Y a menos de 60 píxeles durante 3 segundos; más compañeros aceleran la ayuda. Si nadie ayuda, el progreso se reinicia. Te levantas con 40 de vida y 1.5 segundos de protección.
+- **Rodar:** Shift/K/B durante 0.32 segundos; evita daño en los primeros 0.2 segundos y tiene 1.1 segundos de espera. Suelta la pieza que estés cargando.
+- **Fin del intento:** si todos quedan caídos durante 2 segundos, aparece la derrota. En solitario sucede al caer. El anfitrión puede volver a todo el equipo a la sala para empezar una ronda limpia, sin reconectar.
+- **HUD y resultados:** barras de vida y borrachera, inventario y estado de cada jugador. Al vencer a Mamá Osa se comparte la pantalla de humillación con fuego amigo recibido, distancia máxima de vuelo en píxeles, bebidas terminadas, amigos alcanzados al vomitar, siestas en combate, daño efectivo al jefe y rescates. Los empates comparten premio; valores en cero no generan ganadores.
+- El anfitrión calcula automáticamente la vida, inventario, estados, daño, reanimación y estadísticas. **No hay ajustes de vida en la sala.**
 
 **Objetos comunes:**
 - Cerveza (cura y sube el medidor)
@@ -185,14 +197,14 @@ Antes de cada jefe hay **una sola misión**: recolectar las piezas del artilugio
 - Las piezas están repartidas por la zona: conviene **dividirse**.
 - Las piezas se cargan con las manos (si te pegan, la sueltas).
 - Al juntar todo, se **construye en una estación** del mapa (mantener botón entre varios jugadores para hacerlo más rápido). Si se suelta el botón, el avance se baja.
-- **Zona 1:** las abejas atacan a quien se acerque a un panal y no se calman hasta que los oseznos comen. Con la papilla lista hay **30 segundos para dársela a los oseznos** (otra barra, manteniendo el botón junto a ellos). Si se logra, lloran por su mamá y empieza la pelea; si no, Mamá Osa llega, mata a todos al instante y hay que volver a cocinar.
+- **Zona 1:** las abejas atacan a quien se acerque a un panal; molestan con menos fuerza durante la pelea y se calman al vencer al jefe. Con la papilla lista hay **30 segundos para dársela a los oseznos** (otra barra, manteniendo el botón junto a ellos). Si se logra, lloran por su mamá y empieza la pelea; si no, Mamá Osa derriba a todos y termina el intento. En este prototipo se reintenta la zona desde la sala.
 
 ---
 
 ## 6. Multijugador
 
 - **1 a 6 jugadores**, en línea, cooperativo.
-- **Conexión:** Steam (plugin **GodotSteam**) — invitas desde tu lista de amigos, sin servidores propios.
+- **Conexión actual del prototipo:** ENet por IP. **Para después:** Steam (plugin **GodotSteam**) — invitas desde tu lista de amigos, sin servidores propios.
 - **Modelo:** uno es **anfitrión** (decide lo que hace el jefe, el daño y los objetos). Los demás reciben la información.
 - **Se sincroniza:** posiciones, vida, ataques, estado del jefe, objetos y piezas.
 - **No se sincroniza (local en cada pantalla):** partículas, ragdolls cosméticos, sonidos.
@@ -297,9 +309,9 @@ Antes de cada jefe hay **una sola misión**: recolectar las piezas del artilugio
 | 1 | ✅ Prototipo con cubos: 2 jugadores conectados en línea, moverse y golpear |
 | 2 | ✅ Menú principal, crear partida, sala de espera con selección de jugador (personajes provisionales de colores) y bosque inicial con el campamento |
 | 3 | ✅ Misión del Lago con cubos: cargar piezas (miel, olla, leña), abejas y cocinar la papilla en la fogata |
-| 4 | Mamá Osa (cubo): llega al terminar la papilla, persigue y pega, vida y 3 fases, dinámica de proteger la olla y los oseznos |
-| 5 | Cerveza (cura + borrachera), levantar compañero caído |
-| 6 | Zona 1 completa con cubos, de principio a fin, con pantalla de humillación |
+| 4 | ✅ Mamá Osa (cubo): llega cuando los oseznos comen, persigue y pega, vida y 3 fases, dinámica de proteger la olla y los oseznos |
+| 5 | ✅ Cerveza (cura + borrachera, vómito y sueño), levantar compañero caído y esquivar |
+| 6 | ✅ Cierre de Zona 1 con cubos, pantalla de humillación, derrota y regreso compartido a la sala; pendiente ajustar el balance con amigos |
 | 7 | **Probar con amigos** y ajustar |
 | 8 | Sprites y animaciones reales de la Zona 1 |
 | 9 | Página de Steam + clips para redes |
@@ -314,6 +326,6 @@ Antes de cada jefe hay **una sola misión**: recolectar las piezas del artilugio
 - Steam: al tener alcohol, marcar la etiqueta de contenido correspondiente en la página
 - Precio
 - Final de la historia (¿giro?)
-- Vida de los jugadores
+- ~~Vida de los jugadores~~ → **100 puntos para todos**
 - Horas por semana disponibles
 - Música

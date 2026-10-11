@@ -1,8 +1,9 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://scripts/main.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/sala.gd" id="2"]
 [ext_resource type="PackedScene" path="res://escenas/bosque.tscn" id="3"]
+[ext_resource type="Script" path="res://scripts/hud_partida.gd" id="4"]
 
 [node name="Main" type="Node"]
 script = ExtResource("1")
@@ -14,9 +15,10 @@ script = ExtResource("1")
 [node name="Ayuda" type="Label" parent="UI"]
 offset_left = 16.0
 offset_top = 12.0
-offset_right = 900.0
+offset_right = 1260.0
 offset_bottom = 40.0
-text = "W A S D moverse  ·  Espacio saltar  ·  J o clic izquierdo golpear  ·  E agarrar / soltar  ·  Esc salir"
+theme_override_font_sizes/font_size = 14
+text = "WASD / stick: mover · Espacio / A: saltar · J / X: golpear · Shift / B: rodar · Q / RB: beber · E / Y: recoger / mantener para levantar · Esc: salir"
 
 [node name="Mision" type="Label" parent="UI"]
 offset_left = 16.0
@@ -24,6 +26,58 @@ offset_top = 40.0
 offset_right = 1260.0
 offset_bottom = 68.0
 theme_override_colors/font_color = Color(1, 0.9, 0.5, 1)
+
+[node name="Jefe" type="Control" parent="UI"]
+visible = false
+layout_mode = 3
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -300.0
+offset_top = 76.0
+offset_right = 300.0
+offset_bottom = 120.0
+grow_horizontal = 2
+mouse_filter = 2
+
+[node name="Texto" type="Label" parent="UI/Jefe"]
+layout_mode = 0
+offset_right = 600.0
+offset_bottom = 24.0
+text = "Mamá Osa"
+horizontal_alignment = 1
+
+[node name="Fondo" type="ColorRect" parent="UI/Jefe"]
+layout_mode = 0
+offset_top = 26.0
+offset_right = 600.0
+offset_bottom = 42.0
+mouse_filter = 2
+color = Color(0, 0, 0, 0.6)
+
+[node name="Barra" type="ColorRect" parent="UI/Jefe"]
+layout_mode = 0
+offset_top = 26.0
+offset_right = 600.0
+offset_bottom = 42.0
+mouse_filter = 2
+color = Color(0.8, 0.2, 0.15, 1)
+
+[node name="Marca1" type="ColorRect" parent="UI/Jefe"]
+layout_mode = 0
+offset_left = 198.0
+offset_top = 24.0
+offset_right = 202.0
+offset_bottom = 44.0
+mouse_filter = 2
+
+[node name="Marca2" type="ColorRect" parent="UI/Jefe"]
+layout_mode = 0
+offset_left = 398.0
+offset_top = 24.0
+offset_right = 402.0
+offset_bottom = 44.0
+mouse_filter = 2
 
 [node name="Aviso" type="Label" parent="UI"]
 anchors_preset = 12
@@ -215,3 +269,13 @@ text = "Empezar partida"
 [node name="Salir" type="Button" parent="UI/Sala"]
 layout_mode = 2
 text = "Salir de la sala"
+
+[node name="HUD" type="Control" parent="UI"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("4")

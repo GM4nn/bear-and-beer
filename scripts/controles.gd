@@ -1,6 +1,5 @@
 extends Node
 ## Registra las acciones de entrada del GDD (sección 3) al arrancar el juego.
-## Se irán agregando esquivar, agarrar y tomar cerveza en sus etapas.
 
 
 func _ready() -> void:
@@ -11,6 +10,8 @@ func _ready() -> void:
 	_accion("saltar", [KEY_SPACE], [JOY_BUTTON_A])
 	_accion("golpear", [KEY_J], [JOY_BUTTON_X], MOUSE_BUTTON_LEFT)
 	_accion("agarrar", [KEY_E], [JOY_BUTTON_Y])
+	_accion("beber", [KEY_Q], [JOY_BUTTON_RIGHT_SHOULDER])
+	_accion("esquivar", [KEY_SHIFT, KEY_K], [JOY_BUTTON_B])
 	_eje("izquierda", JOY_AXIS_LEFT_X, -1.0)
 	_eje("derecha", JOY_AXIS_LEFT_X, 1.0)
 	_eje("arriba", JOY_AXIS_LEFT_Y, -1.0)
