@@ -12,6 +12,7 @@ func _ready() -> void:
 	_accion("agarrar", [KEY_E], [JOY_BUTTON_Y])
 	_accion("beber", [KEY_Q], [JOY_BUTTON_RIGHT_SHOULDER])
 	_accion("esquivar", [KEY_SHIFT, KEY_K], [JOY_BUTTON_B])
+	_accion("lanzar", [KEY_F], [JOY_BUTTON_LEFT_SHOULDER])
 	_eje("izquierda", JOY_AXIS_LEFT_X, -1.0)
 	_eje("derecha", JOY_AXIS_LEFT_X, 1.0)
 	_eje("arriba", JOY_AXIS_LEFT_Y, -1.0)

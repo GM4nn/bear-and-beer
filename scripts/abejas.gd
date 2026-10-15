@@ -15,6 +15,8 @@ const ATURDIDO := 2.5
 const FRENO_EN_PELEA := 0.75
 const DANO_EN_PELEA := 2
 const ESPERA_PIQUETE_EN_PELEA := 1.6
+const CUADROS_ABEJA := "res://arte/zona1/abeja/%d.png"
+const CANTIDAD_ABEJAS := 5
 
 @export var miel: NodePath
 ## El enjambre del panal de la miel, además, persigue a quien la carga, esté
@@ -31,6 +33,11 @@ var _espera := 0.0
 var _aturdidas := 0.0
 var _furiosas := false
 var _presa: Node2D = null
+var _abejas: Array[Sprite2D] = []
+var _fases: Array[float] = []
+var _cuadros_abeja: Array[Texture2D] = []
+var _posicion_vista := Vector2.ZERO
+var _hacia := 1.0
 
 @onready var visual: Node2D = $Visual
 
@@ -38,15 +45,27 @@ var _presa: Node2D = null
 func _ready() -> void:
 	add_to_group("golpeables")
 	_casa = position
+	_posicion_vista = position
 	# El panal se queda colgado en el árbol aunque el enjambre salga a perseguir.
-	var panal := Node2D.new()
+	var panal := Sprite2D.new()
+	panal.texture = load("res://arte/zona1/panal.png")
+	panal.scale = Vector2(2, 2)
 	panal.position = position + Vector2(0, 12)
-	var caja := ColorRect.new()
-	caja.color = Color(0.85, 0.6, 0.1)
-	caja.position = Vector2(-10, -104)
-	caja.size = Vector2(20, 26)
-	panal.add_child(caja)
+	panal.offset = Vector2(9, -44)
 	get_parent().add_child.call_deferred(panal)
+	# Abejitas animadas en lugar de los cuadritos de prototipo.
+	for cuadrito in visual.get_children():
+		cuadrito.hide()
+	var n := 0
+	while ResourceLoader.exists(CUADROS_ABEJA % n):
+		_cuadros_abeja.append(load(CUADROS_ABEJA % n))
+		n += 1
+	for i in CANTIDAD_ABEJAS:
+		var abeja := Sprite2D.new()
+		abeja.texture = _cuadros_abeja[0] if not _cuadros_abeja.is_empty() else null
+		visual.add_child(abeja)
+		_abejas.append(abeja)
+		_fases.append(randf() * TAU)
 
 
 func _physics_process(delta: float) -> void:
@@ -88,8 +107,19 @@ func _physics_process(delta: float) -> void:
 
 
 func _process(_delta: float) -> void:
-	for abeja: Control in visual.get_children():
-		abeja.position = Vector2(randf_range(-14.0, 14.0), randf_range(-14.0, 14.0))
+	# Miran hacia donde se mueve el enjambre (las abejas están dibujadas mirando a la derecha).
+	var avance := position.x - _posicion_vista.x
+	if absf(avance) > 0.5:
+		_hacia = signf(avance)
+	_posicion_vista = position
+	var t := Time.get_ticks_msec() / 1000.0
+	for i in _abejas.size():
+		var fase := _fases[i]
+		# Cada una revolotea en su propio ocho alrededor del centro del enjambre.
+		_abejas[i].position = Vector2(sin(t * 2.3 + fase) * 30.0, sin(t * 4.6 + fase * 1.7) * 18.0 - 6.0)
+		_abejas[i].flip_h = _hacia < 0.0
+		if not _cuadros_abeja.is_empty():
+			_abejas[i].texture = _cuadros_abeja[int(t * 24.0 + i) % _cuadros_abeja.size()]
 
 
 ## La llama el anfitrión cuando un jugador le pega al enjambre.

@@ -32,7 +32,6 @@ var _susto := 0.0
 @onready var barra: ColorRect = $Barra
 @onready var barra_oseznos_fondo: ColorRect = $BarraOseznosFondo
 @onready var barra_oseznos: ColorRect = $BarraOseznos
-@onready var papilla: ColorRect = $Papilla
 @onready var llanto: Label = $Llanto
 @onready var mama_osa: Node2D = $MamaOsa
 
@@ -41,6 +40,17 @@ func _ready() -> void:
 	add_to_group("estacion")
 	$GolpeOlla.golpeado.connect(danar_olla.bind(10))
 	$GolpeOseznos.golpeado.connect(_pegaron_a_osezno)
+	var arte: Node2D = preload("res://scripts/estacion_visual.gd").new()
+	arte.name = "ArteEstacion"
+	add_child(arte)
+	# Los sprites ya identifican la estación; dejar espacio al nombre del jugador.
+	$Texto.hide()
+	$TextoOseznos.hide()
+	$Llanto.position.y = -185
+	$Barra.position.y = -155
+	$BarraFondo.position.y = -155
+	$BarraOseznos.position.y = -155
+	$BarraOseznosFondo.position.y = -155
 
 
 ## La llama el anfitrión: daño a la olla por golpes de jugadores o del jefe.
@@ -53,8 +63,15 @@ func danar_olla(dano: int) -> void:
 
 
 func _pegaron_a_osezno() -> void:
+	if multiplayer.is_server():
+		_asustar_crias.rpc()
 	if alimentados:
 		_jefe().enfurecer("le pegaron a un osezno")
+
+
+@rpc("authority", "call_local", "reliable")
+func _asustar_crias() -> void:
+	$ArteEstacion.asustar()
 
 
 func _jefe() -> Node2D:
@@ -137,7 +154,6 @@ func _process(delta: float) -> void:
 	barra_oseznos_fondo.visible = terminada and not alimentados
 	barra_oseznos.visible = barra_oseznos_fondo.visible
 	barra_oseznos.size.x = barra_oseznos_fondo.size.x * alimento
-	papilla.visible = terminada and vida_olla > 0
 	llanto.visible = terminada
 	llanto.text = "¡BUAAAA! ¡MAMÁ!" if alimentados else "¡HAMBRE!"
 	mama_osa.visible = _susto > 0.0

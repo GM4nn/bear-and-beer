@@ -1,0 +1,173 @@
+{
+  "service": "PixelLab MCP",
+  "date": "2026-10-14",
+  "description": "Sprites transparentes y animaciones de los objetos de Zona 1. Animaciones locales ligadas al estado de juego replicado.",
+  "images": [
+    {
+      "name": "chela",
+      "width": 32,
+      "height": 32,
+      "prompt": "One isolated upright amber glass beer bottle sprite, capped with a green metal cap, cream paper label without text. Side view, crisp SNES pixel art, warm colors and dark selective outlines, transparent background, only the bottle, centered, no scenery.",
+      "result": [
+        {
+          "type": "text",
+          "text": "status: completed\nid: 093ea892-68a4-4e65-bb59-a43ccdb19758\njob_id: 093ea892-68a4-4e65-bb59-a43ccdb19758\nframes: 1\ntransparent: yes\nasset_id: c6de4860-fd42-55ff-84ed-785c98f83365\nasset_type: image\nasset_status: saved\ngallery: saved to your PixelLab gallery (pixellab.ai/create)\ncharged: 1 generation\ndownload: https://api.pixellab.ai/mcp/images/093ea892-68a4-4e65-bb59-a43ccdb19758/download"
+        }
+      ]
+    },
+    {
+      "name": "botella_vacia",
+      "width": 32,
+      "height": 32,
+      "prompt": "One isolated empty brown glass beer bottle, uncapped narrow neck, faint cream label without text, side view, crisp SNES pixel art, transparent background, only the whole bottle centered, no scenery.",
+      "result": [
+        {
+          "type": "text",
+          "text": "status: completed\nid: 6877dfb2-1e97-4662-8ef3-17654a7c4f0b\njob_id: 6877dfb2-1e97-4662-8ef3-17654a7c4f0b\nframes: 1\ntransparent: yes\nasset_id: 12af61ed-815a-5ff4-92dd-418120f5a5de\nasset_type: image\nasset_status: saved\ngallery: saved to your PixelLab gallery (pixellab.ai/create)\ncharged: 1 generation\ndownload: https://api.pixellab.ai/mcp/images/6877dfb2-1e97-4662-8ef3-17654a7c4f0b/download"
+        }
+      ]
+    },
+    {
+      "name": "miel",
+      "width": 32,
+      "height": 32,
+      "prompt": "One isolated squat glass honey jar full of golden honey, cloth lid tied with string, a little honey drip, no text. Crisp SNES pixel art inventory sprite, low three-quarter side view, transparent background, only one jar.",
+      "result": [
+        {
+          "type": "text",
+          "text": "status: completed\nid: ab7f711e-3db5-411b-9700-e2dec3790e40\njob_id: ab7f711e-3db5-411b-9700-e2dec3790e40\nframes: 1\ntransparent: yes\nasset_id: 3866e6ea-9b28-5d54-b543-153f86b31bf8\nasset_type: image\nasset_status: saved\ngallery: saved to your PixelLab gallery (pixellab.ai/create)\ncharged: 1 generation\ndownload: https://api.pixellab.ai/mcp/images/ab7f711e-3db5-411b-9700-e2dec3790e40/download"
+        }
+      ]
+    },
+    {
+      "name": "olla",
+      "width": 48,
+      "height": 32,
+      "prompt": "One isolated empty dark cast iron cooking pot with two side handles and open top, no lid, no contents. Crisp SNES pixel art, grey metal rim highlights, low three-quarter side view, transparent background, only one pot.",
+      "result": [
+        {
+          "type": "text",
+          "text": "status: completed\nid: cda87c44-1401-4405-ab76-866e20ad77bb\njob_id: cda87c44-1401-4405-ab76-866e20ad77bb\nframes: 1\ntransparent: yes\nasset_id: 30b4d2cf-3883-5701-992a-06deb0d9f119\nasset_type: image\nasset_status: saved\ngallery: saved to your PixelLab gallery (pixellab.ai/create)\ncharged: 1 generation\ndownload: https://api.pixellab.ai/mcp/images/cda87c44-1401-4405-ab76-866e20ad77bb/download"
+        }
+      ]
+    },
+    {
+      "name": "papilla",
+      "width": 48,
+      "height": 32,
+      "prompt": "One isolated dark cast iron cooking pot with two side handles, open top full of golden honey porridge. A few bubbles on the porridge surface. Crisp SNES pixel art, grey metal rim highlights, low three-quarter side view, transparent background, only one pot, no fire or stove.",
+      "result": [
+        {
+          "type": "text",
+          "text": "status: completed\nid: ca00fe76-4ed8-4204-8117-6a3323a20f07\njob_id: ca00fe76-4ed8-4204-8117-6a3323a20f07\nframes: 1\ntransparent: yes\nasset_id: 86a4c0a1-3f68-5424-a86e-ba13c9e0136b\nasset_type: image\nasset_status: saved\ngallery: saved to your PixelLab gallery (pixellab.ai/create)\ncharged: 1 generation\ndownload: https://api.pixellab.ai/mcp/images/ca00fe76-4ed8-4204-8117-6a3323a20f07/download"
+        }
+      ]
+    },
+    {
+      "name": "lena",
+      "width": 32,
+      "height": 32,
+      "prompt": "One isolated bundle of three short cut firewood logs tied with rope, brown bark and golden cut ends. Crisp SNES pixel art, low three-quarter side view, transparent background, only the logs, no scenery.",
+      "result": [
+        {
+          "type": "text",
+          "text": "status: completed\nid: 280b2c8c-307f-4f74-83de-9c2ae2cc2a89\njob_id: 280b2c8c-307f-4f74-83de-9c2ae2cc2a89\nframes: 1\ntransparent: yes\nasset_id: 9465c56e-0bd4-5a53-9362-0c5c4b88ec72\nasset_type: image\nasset_status: saved\ngallery: saved to your PixelLab gallery (pixellab.ai/create)\ncharged: 1 generation\ndownload: https://api.pixellab.ai/mcp/images/280b2c8c-307f-4f74-83de-9c2ae2cc2a89/download"
+        }
+      ]
+    },
+    {
+      "name": "cartel",
+      "width": 64,
+      "height": 64,
+      "prompt": "One isolated rustic wooden trail sign: a wide blank wooden plank pointing right on a short wooden post. Crisp SNES pixel art, side view, warm brown wood and dark selective outlines, transparent background, no text, no scenery.",
+      "result": [
+        {
+          "type": "text",
+          "text": "status: completed\nid: f0ae9d23-3d04-488b-a586-909dc6f66112\njob_id: f0ae9d23-3d04-488b-a586-909dc6f66112\nframes: 1\ntransparent: yes\nasset_id: 537aa2c6-24a0-53fc-b8a9-5abf598e2302\nasset_type: image\nasset_status: saved\ngallery: saved to your PixelLab gallery (pixellab.ai/create)\ncharged: 1 generation\ndownload: https://api.pixellab.ai/mcp/images/f0ae9d23-3d04-488b-a586-909dc6f66112/download"
+        }
+      ]
+    },
+    {
+      "name": "osezno",
+      "width": 48,
+      "height": 48,
+      "prompt": "One cute small brown bear cub sitting on its rump facing left, round ears, beige muzzle, short paws resting in front of belly, dark eyes. Crisp SNES pixel art sprite, side three-quarter view, warm medium brown fur, dark selective outline. Entire body visible, transparent background, no scenery, no accessories.",
+      "result": [
+        {
+          "type": "text",
+          "text": "status: completed\nid: 9dc654a7-f6d2-4354-9c49-d4789cea8329\njob_id: 9dc654a7-f6d2-4354-9c49-d4789cea8329\nframes: 1\ntransparent: yes\nasset_id: 52252975-c427-5511-9158-a5fb0170c0b0\nasset_type: image\nasset_status: saved\ngallery: saved to your PixelLab gallery (pixellab.ai/create)\ncharged: 1 generation\ndownload: https://api.pixellab.ai/mcp/images/9dc654a7-f6d2-4354-9c49-d4789cea8329/download"
+        }
+      ]
+    }
+  ],
+  "animations": [
+    {
+      "name": "quieto",
+      "source": "osezno",
+      "prompt": "Subtle breathing and one gentle blink while sitting still. Keep paws and rump anchored, fixed camera, no walking, seamless idle loop.",
+      "requestedFrames": 4,
+      "result": [
+        {
+          "type": "text",
+          "text": "status: completed\nid: 5ebdf7b2-cd69-4cce-b0f9-43b30f554ceb\njob_id: 5ebdf7b2-cd69-4cce-b0f9-43b30f554ceb\nframes: 5\ntransparent: yes\nasset_id: 479d0e0f-302d-51b6-8364-b69becfbb613\nasset_type: image\nasset_status: saved\ngallery: saved to your PixelLab gallery (pixellab.ai/create)\ncharged: 1 generation\ndownload: https://api.pixellab.ai/mcp/images/5ebdf7b2-cd69-4cce-b0f9-43b30f554ceb/download?index=0 ... ?index=4"
+        },
+        {
+          "type": "text",
+          "text": "(1 more frames not shown — fetch them from the download URLs above)"
+        }
+      ]
+    },
+    {
+      "name": "comer",
+      "source": "osezno",
+      "prompt": "Sitting bear cub eats: repeatedly raises its front paws to its mouth and chews happily, slight head dip, then returns paws down. Keep body and rump anchored. Fixed camera, seamless eating loop.",
+      "requestedFrames": 6,
+      "result": [
+        {
+          "type": "text",
+          "text": "status: completed\nid: 86814b4e-3ca1-4f3c-b7fa-a753bc0180e7\njob_id: 86814b4e-3ca1-4f3c-b7fa-a753bc0180e7\nframes: 7\ntransparent: yes\nasset_id: f32892ec-f298-5040-85e0-913e7294caed\nasset_type: image\nasset_status: saved\ngallery: saved to your PixelLab gallery (pixellab.ai/create)\ncharged: 1 generation\ndownload: https://api.pixellab.ai/mcp/images/86814b4e-3ca1-4f3c-b7fa-a753bc0180e7/download?index=0 ... ?index=6"
+        },
+        {
+          "type": "text",
+          "text": "(3 more frames not shown — fetch them from the download URLs above)"
+        }
+      ]
+    },
+    {
+      "name": "llorar",
+      "source": "osezno",
+      "prompt": "Sitting bear cub cries for its mother: tilts head up, opens mouth wide and raises both front paws, then returns to starting pose. Keep rump anchored, no locomotion, seamless crying loop.",
+      "requestedFrames": 6,
+      "result": [
+        {
+          "type": "text",
+          "text": "status: completed\nid: aaf92726-7cc2-4441-8c5b-3af615af8fd0\njob_id: aaf92726-7cc2-4441-8c5b-3af615af8fd0\nframes: 7\ntransparent: yes\nasset_id: e4f27770-b985-57c8-86a1-40de2cd1f369\nasset_type: image\nasset_status: saved\ngallery: saved to your PixelLab gallery (pixellab.ai/create)\ncharged: 1 generation\ndownload: https://api.pixellab.ai/mcp/images/aaf92726-7cc2-4441-8c5b-3af615af8fd0/download?index=0 ... ?index=6"
+        },
+        {
+          "type": "text",
+          "text": "(3 more frames not shown — fetch them from the download URLs above)"
+        }
+      ]
+    },
+    {
+      "name": "hervir",
+      "source": "papilla",
+      "prompt": "Only the golden porridge bubbles gently and two small wisps of steam rise. Metal pot and handles remain completely stationary at their original position. Fixed camera, seamless loop.",
+      "requestedFrames": 4,
+      "result": [
+        {
+          "type": "text",
+          "text": "status: completed\nid: 636f7f44-06a1-4c5d-a54e-fba27633976c\njob_id: 636f7f44-06a1-4c5d-a54e-fba27633976c\nframes: 5\ntransparent: yes\nasset_id: ca87cab5-07d7-5a35-9411-ae17b2babdbc\nasset_type: image\nasset_status: saved\ngallery: saved to your PixelLab gallery (pixellab.ai/create)\ncharged: 1 generation\ndownload: https://api.pixellab.ai/mcp/images/636f7f44-06a1-4c5d-a54e-fba27633976c/download?index=0 ... ?index=4"
+        },
+        {
+          "type": "text",
+          "text": "(1 more frames not shown — fetch them from the download URLs above)"
+        }
+      ]
+    }
+  ],
+  "brokenPot": {
+    "job_id": "b0dde8f8-1623-4209-ad15-b4c01aea6cb7",
+    "description": "Olla rota con papilla derramada."
+  }
+}

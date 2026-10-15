@@ -68,9 +68,9 @@ func _actualizar() -> void:
 func _lugar(id: int, mi_id: int) -> Control:
 	var caja := VBoxContainer.new()
 	caja.custom_minimum_size = Vector2(160, 0)
-	var cubo := ColorRect.new()
-	cubo.custom_minimum_size = Vector2(64, 64)
-	cubo.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	var retrato := Control.new()
+	retrato.custom_minimum_size = Vector2(80, 100)
+	retrato.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	var nombre := Label.new()
 	nombre.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	var estado := Label.new()
@@ -78,15 +78,30 @@ func _lugar(id: int, mi_id: int) -> Control:
 	estado.modulate.a = 0.7
 
 	if id == 0:
-		cubo.color = Color(1, 1, 1, 0.08)
+		var vacio := Label.new()
+		vacio.text = "+"
+		vacio.position = Vector2(28, 24)
+		vacio.add_theme_font_size_override("font_size", 34)
+		vacio.modulate.a = 0.25
+		retrato.add_child(vacio)
 		nombre.text = "Vacío"
 	else:
 		var datos: Dictionary = Red.jugadores[id]
-		cubo.color = Jugador.COLORES[datos.color]
+		var compa := AnimatedSprite2D.new()
+		compa.sprite_frames = Jugador._cuadros_compartidos()
+		compa.offset = Jugador.DESFASE_SPRITE
+		compa.position = Vector2(40, 92)
+		compa.scale = Vector2(3, 3)
+		var tinte := ShaderMaterial.new()
+		tinte.shader = Jugador.SHADER_COLOR
+		tinte.set_shader_parameter("color_jugador", Jugador.COLORES[datos.color])
+		compa.material = tinte
+		compa.play("quieto")
+		retrato.add_child(compa)
 		nombre.text = datos.nombre + (" (tú)" if id == mi_id else "")
 		estado.text = "Listo" if datos.listo else "Eligiendo..."
 
-	caja.add_child(cubo)
+	caja.add_child(retrato)
 	caja.add_child(nombre)
 	caja.add_child(estado)
 	return caja

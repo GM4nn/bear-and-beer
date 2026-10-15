@@ -1,6 +1,6 @@
 # BearAndBeer — Documento de diseño (GDD)
 
-> Versión 0.4 — Octubre 2026
+> Versión 0.5 — Octubre 2026
 > Las secciones marcadas con **[DECIDIR]** están pendientes.
 
 ---
@@ -90,13 +90,26 @@ Cinemática → Tutorial → Mamá Osa → El Abuelo → El Tío → La Prima �
 | Esquivar / rodar | Shift / K | B |
 | Agarrar / lanzar / colocar objeto | E | Y |
 | Tomar cerveza | Q | RB |
+| Lanzar botella vacía | F | LB |
 | Levantar compañero caído | Mantener E | Mantener Y |
+| Subir a hombros | Saltar y pulsar E sobre un compa | A y luego Y sobre un compa |
+| Bajar de hombros / saltar desde arriba | E / Espacio | Y / A |
 
 **Reglas:**
 - **100 puntos de vida máxima por jugador**, iguales para todos y sin configuración en la sala. El anfitrión calcula y sincroniza automáticamente el daño y las muertes.
 - **Te curas tomando cerveza.**
 - Al perder la vida quedas **caído**; un compañero te levanta en unos segundos.
 - **Fuego amigo activado** (los golpes y objetos sí les pegan a tus compañeros).
+
+**Torre de compas (implementada):**
+- Máximo **3 jugadores en total**, contando al que está en el suelo. Sin ajustes del anfitrión.
+- Saltar y pulsar E/Y encima de un compañero. Si ya lleva a alguien, se trepa al último puesto libre de esa torre.
+- La base camina y salta con el grupo; los pasajeros pueden mirar a ambos lados, pegar y lanzar botellas desde su altura.
+- Posturas propias: la base sostiene con los brazos elevados, los pasajeros van sentados y el intermedio también carga al de arriba. Hay ciclos de reposo, caminar cargando y puñetazos desde cada puesto.
+- **Crítico de torre:** todos los integrantes de una torre de 2 o 3 deben acertar sus puños a Mamá Osa hacia el mismo lado dentro de **0,18 segundos**. El último contacto completa **×2 del daño combinado** (40 con dos sobrios, 60 con tres), con aviso visual para todos. Fallar, golpear tarde o cambiar integrantes rompe la coordinación; no aumenta el daño a compañeros, olla ni oseznos. Lo valida el anfitrión sin opciones de configuración.
+- E/Y baja al pasajero; Espacio/A permite saltar desde sus hombros. Si sale el de en medio, caen los de arriba. La base también puede pulsar E/Y para soltarlos.
+- Golpes, agarres, rodada, incapacitación y desconexión del apoyo hacen caer a los que sostiene. No se puede formar una torre cargando piezas.
+- E/Y en el suelo conserva la interacción con objetos y mantenerlo permite levantar a un compañero caído cuando no estás en una torre.
 - Los golpes fuertes de los jefes causan **ragdoll** / salir volando.
 
 ### La cerveza: cura y Medidor de Borrachera 🍺
@@ -127,7 +140,7 @@ Tomar cerveza **te cura**, pero sube tu medidor de borrachera. Tomar tarda un pa
 
 **Objetos comunes:**
 - Cerveza (cura y sube el medidor)
-- Botella vacía (se lanza)
+- Botella vacía (se lanza): cada chela que te tomas te deja una. Vuela recta unos 380 píxeles, quita 12 de vida a enemigos y compañeros, y entre más borracho estás, peor puntería.
 - Palo (golpe con más alcance)
 - Sartén (aturde un instante)
 - Silla plegable (daño alto, se rompe)
@@ -141,6 +154,7 @@ Regla general: **a todos los jefes hay que pegarles hasta matarlos**, pero cada 
 ### Jefe 1 — Mamá Osa (El Lago)
 - **Artilugio:** papilla de miel → los oseznos lloran y llaman a Mamá Osa.
 - **Dinámica: PROTEGER.** Hay que defender la olla de papilla y a los oseznos. Si alguien lastima a un osezno o se rompe la olla, Mamá Osa se enfurece y sube de fase de golpe.
+- **Agarre (en las 3 fases):** se le echa encima al jugador más cercano, lo levanta con las patas y lo avienta bien lejos. Se evita rodando a tiempo, y un compañero puede soltarlo de un golpe antes de que lo aviente.
 - **Fase 1:** zarpazos y empujones, revisa a sus crías.
 - **Fase 2:** embiste en línea recta, ruge para aturdir.
 - **Fase 3:** salta al lago y sale salpicando, golpe al piso que hace volar a todos.
@@ -313,7 +327,7 @@ Antes de cada jefe hay **una sola misión**: recolectar las piezas del artilugio
 | 5 | ✅ Cerveza (cura + borrachera, vómito y sueño), levantar compañero caído y esquivar |
 | 6 | ✅ Cierre de Zona 1 con cubos, pantalla de humillación, derrota y regreso compartido a la sala; pendiente ajustar el balance con amigos |
 | 7 | **Probar con amigos** y ajustar |
-| 8 | Sprites y animaciones reales de la Zona 1 |
+| 8 | ✅ Primera pasada de sprites y animaciones de Zona 1: escenario, jugadores, Mamá Osa, abejas, chelas, piezas, fogatas y oseznos. Pendiente pulido visual y revisión con amigos |
 | 9 | Página de Steam + clips para redes |
 | 10 | Zonas 2 a 5, una por una |
 | 11 | Cinemática, 6 jugadores, pulido |

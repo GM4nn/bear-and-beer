@@ -75,7 +75,12 @@ func iniciar_partida() -> void:
 
 
 func ip_local() -> String:
-	for ip in IP.get_local_addresses():
+	var ips := IP.get_local_addresses()
+	# Con Hamachi los amigos se conectan a la IP de Hamachi (25.x.x.x), así que va primero.
+	for ip in ips:
+		if ip.begins_with("25."):
+			return ip
+	for ip in ips:
 		if ip.begins_with("192.168.") or ip.begins_with("10.") or ip.begins_with("172."):
 			return ip
 	return "127.0.0.1"

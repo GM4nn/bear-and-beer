@@ -5,10 +5,14 @@ const REPONER := 25.0
 var disponible := true
 var _tiempo := 0.0
 var _etiqueta: Label
+var _sprite: Sprite2D
+var _pulso := 0.0
 
 
 func _ready() -> void:
 	add_to_group("cervezas")
+	_sprite = preload("res://scripts/arte_objetos.gd").estatico("chela", 1.5)
+	add_child(_sprite)
 	_etiqueta = Label.new()
 	_etiqueta.position = Vector2(-60, -65)
 	_etiqueta.size.x = 120
@@ -20,12 +24,13 @@ func _ready() -> void:
 
 
 func _draw() -> void:
-	draw_rect(Rect2(-10, -27, 20, 27), Color("bc802e"))
-	draw_rect(Rect2(-5, -39, 10, 12), Color("427d46"))
-	draw_rect(Rect2(-10, -19, 20, 11), Color("fff0ae"))
+	draw_set_transform(Vector2.ZERO, 0, Vector2(1, 0.35))
+	draw_circle(Vector2.ZERO, 9, Color(0, 0, 0, 0.22))
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
+	_pulso += delta
+	_sprite.position.y = sin(_pulso * 2.0) * 1.2
 	# Una sola indicación junto al jugador, incluso donde hay varias botellas.
 	_etiqueta.visible = false
 	if not disponible:
@@ -65,3 +70,6 @@ func _physics_process(delta: float) -> void:
 func _disponibilidad(valor: bool) -> void:
 	disponible = valor
 	visible = valor
+	if valor:
+		_sprite.scale = Vector2.ZERO
+		create_tween().tween_property(_sprite, "scale", Vector2(1.5, 1.5), 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)

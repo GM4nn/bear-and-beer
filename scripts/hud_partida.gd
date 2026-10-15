@@ -13,9 +13,9 @@ func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_fila = HBoxContainer.new()
-	_fila.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	_fila.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
 	_fila.offset_left = 16
-	_fila.offset_right = -16
+	_fila.offset_right = 336
 	_fila.offset_top = 132
 	_fila.offset_bottom = 232
 	_fila.add_theme_constant_override("separation", 8)
@@ -34,13 +34,17 @@ func _process(_delta: float) -> void:
 		var tarjeta: Dictionary = _tarjetas[j.name]
 		tarjeta.vida.value = j.vida
 		tarjeta.borracho.value = j.borrachera
-		tarjeta.detalle.text = "Vida %d/100 · Chelas %d/%d\nBorrachera %d/100 · %s" % [j.vida, j.cervezas, j.MAX_CERVEZAS, j.borrachera, j.texto_estado()]
+		tarjeta.detalle.text = "Vida %d/100 · Chelas %d/%d · Botellas vacías %d\nBorrachera %d/100 · %s" % [j.vida, j.cervezas, j.MAX_CERVEZAS, j.botellas, j.borrachera, j.texto_estado()]
+		if j.is_multiplayer_authority() and j.botellas > 0 and j.aviso_bebida().is_empty():
+			tarjeta.detalle.text += " · F/LB: lanzar botella"
 		if j.is_multiplayer_authority() and not j.aviso_bebida().is_empty():
 			tarjeta.detalle.text += "\n" + j.aviso_bebida()
-		elif j.is_multiplayer_authority() and j.cervezas == 0:
+		elif j.is_multiplayer_authority() and j.cervezas == 0 and j.apoyo_id == 0 and j._torre().encima(j) == null:
 			tarjeta.detalle.text += "\nE/Y: recoger chelas · Q/RB: beber"
 		if j.is_multiplayer_authority() and j.puede_actuar():
-			if j.companero_caido():
+			if j.apoyo_id == 0 and j.altura > 12:
+				tarjeta.detalle.text += " · E/Y sobre un compa: subir a hombros (máx. 3)"
+			elif j.companero_caido() and j.apoyo_id == 0:
 				tarjeta.detalle.text += " · Mantén E/Y para levantar"
 			elif j._pieza_cargada():
 				tarjeta.detalle.text += " · E/Y: soltar pieza"
@@ -48,6 +52,10 @@ func _process(_delta: float) -> void:
 		if id not in ids:
 			_tarjetas[id].panel.queue_free()
 			_tarjetas.erase(id)
+	# Una o dos tarjetas no necesitan tapar todo el paisaje de lado a lado.
+	_fila.size = Vector2(minf(get_viewport_rect().size.x - 32,
+		ids.size() * 320 + maxi(ids.size() - 1, 0) * 8), 0)
+	_fila.position.y = 132 if get_parent().get_node("Jefe").visible else 76
 
 
 func _crear_tarjeta(j: Node) -> void:

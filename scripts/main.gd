@@ -12,6 +12,15 @@ var estacion: Node2D
 var jefe: Node2D
 var _auto := false
 var _regresando_sala := false
+var _pids_bots: Array[int] = []
+
+## Para probar solo: al crear partida se unen bots. El modo de torre acompaña
+## al anfitrión; al desactivar probar_torre_con_bots vuelven a hacer la misión.
+@export var bot_de_ayuda := true
+## Cuántos bots de ayuda se unen (contigo, 2 bots = partida de 3).
+@export_range(1, 5) var cantidad_bots := 2
+## Modo de prueba: se montan sobre el anfitrión y acompañan sus puñetazos.
+@export var probar_torre_con_bots := true
 
 @onready var ayuda: Label = $UI/Ayuda
 @onready var mision: Label = $UI/Mision
@@ -54,6 +63,9 @@ func _ready() -> void:
 	# --auto marca "listo" solo (y el anfitrión empieza al haber 2); --bot juega solo.
 	var args := OS.get_cmdline_user_args()
 	_auto = "--auto" in args
+	for arg in args:
+		if arg.begins_with("--nombre="):
+			campo_nombre.text = arg.get_slice("=", 1)
 	for arg in args:
 		if arg == "--host":
 			_crear_partida()
@@ -118,6 +130,35 @@ func _crear_partida() -> void:
 		return
 	print("Partida creada en el puerto %d" % Red.puerto)
 	_mostrar("sala")
+	_lanzar_bot_de_ayuda()
+
+
+# Abre otra copia del juego, sin ventana, que se une a esta partida y juega sola.
+func _lanzar_bot_de_ayuda() -> void:
+	# No aplica en pruebas automáticas (--auto) ni en instancias sin ventana.
+	if not bot_de_ayuda or _auto or not _pids_bots.is_empty() or DisplayServer.get_name() == "headless":
+		return
+	for numero in range(1, cantidad_bots + 1):
+		var args := PackedStringArray(["--headless"])
+		if OS.has_feature("editor"):
+			args.append_array(["--path", ProjectSettings.globalize_path("res://")])
+		args.append_array(["--", "--join=127.0.0.1", "--auto",
+			"--bot-torre" if probar_torre_con_bots else "--bot-mision", "--bot-ayuda", "--bot-turno=%d" % numero,
+			"--nombre=Bot %d" % numero, "--puerto=%d" % Red.puerto])
+		var pid := OS.create_process(OS.get_executable_path(), args)
+		_pids_bots.append(pid)
+		print("Bot de ayuda %d lanzado (proceso %d)" % [numero, pid])
+
+
+func _quitar_bot_de_ayuda() -> void:
+	for pid in _pids_bots:
+		OS.kill(pid)
+	_pids_bots.clear()
+
+
+func _notification(que: int) -> void:
+	if que == NOTIFICATION_WM_CLOSE_REQUEST or que == NOTIFICATION_PREDELETE:
+		_quitar_bot_de_ayuda()
 
 
 func _fin_ronda(victoria: bool, filas: Array) -> void:
@@ -141,7 +182,8 @@ func _preparar_sala() -> void:
 func _volver_sala() -> void:
 	if not juego.get_node("Partida").finalizada:
 		return
-	_auto = false
+	# El bot de ayuda sigue marcándose listo solo en la siguiente ronda.
+	_auto = "--bot-ayuda" in OS.get_cmdline_user_args()
 	_regresando_sala = false
 	_reiniciar_bosque()
 	for datos in Red.jugadores.values():
@@ -165,6 +207,14 @@ func _unirse() -> void:
 
 
 func _volver_al_menu(mensaje: String) -> void:
+	# El bot de ayuda no se queda huérfano: si pierde la partida, se cierra.
+	if "--bot-ayuda" in OS.get_cmdline_user_args():
+		# La desconexión se notifica antes de terminar el cuadro: no seguir
+		# consultando autoridad en nodos de juego con el peer ya cerrado.
+		process_mode = Node.PROCESS_MODE_DISABLED
+		get_tree().quit()
+		return
+	_quitar_bot_de_ayuda()
 	Red.salir()
 	_reiniciar_bosque()
 	_mostrar("menu")
@@ -183,6 +233,7 @@ func _empezar_juego() -> void:
 
 func _salio_jugador(id: int) -> void:
 	if multiplayer.is_server() and jugadores.has_node(str(id)):
+		juego.get_node("Partida").torre.romper_desde(jugadores.get_node(str(id)))
 		for pieza in get_tree().get_nodes_in_group("piezas"):
 			if pieza.portador == id:
 				pieza.soltar(pieza.position)

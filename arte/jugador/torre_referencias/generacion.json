@@ -1,0 +1,152 @@
+{
+  "service": "PixelLab MCP",
+  "date": "2026-10-14",
+  "source": "arte/jugador/quieto/0.png",
+  "poses": [
+    {
+      "name": "cargar_quieto",
+      "prompt": "Edit only the pose of this tiny side-view pixel character facing right. Raise BOTH elbows outward and BOTH hands beside the ears at shoulder height, palms holding the ankles of an invisible rider sitting on his shoulders. Keep standing legs, cap, face, red shirt, blue jeans, shoes, exact original character size and position (feet at row 79 on the 96x96 transparent canvas). Only ONE character, no rider, no new objects. Crisp pixel art with identical palette.",
+      "job": [
+        {
+          "type": "text",
+          "text": "id: 64f5e966-7686-4def-896f-265083e835ee\njob_id: 64f5e966-7686-4def-896f-265083e835ee\nmode: text\nframes: 1\nsize: 96x96px\ntransparent: True\nedit: Edit only the pose of this tiny side-view pixel character facing right. Raise BOTH elbows outward and BOTH hands beside the ears at shoulder height, palms holding the ankles of an invisible rider sitting on his shoulders. Keep standing legs, cap, face, red shirt, blue jeans, shoes, exact original character size and position (feet at row 79 on the 96x96 transparent canvas). Only ONE character, no rider, no new objects. Crisp pixel art with identical palette.\nasset_id: 67b0d897-6ff9-5d1e-b69a-bde05e604422\nasset_status: pending (saved when generation completes)\ncost: ~10 generations\nstatus: processing (~30-90s)\n\nhint: get_image(job_id=\"64f5e966-7686-4def-896f-265083e835ee\")"
+        }
+      ]
+    },
+    {
+      "name": "hombros_quieto",
+      "prompt": "Edit only the pose of this tiny side-view pixel character facing right: sitting astride an invisible friend's shoulders, knees bent forward and shoes hanging down, hips lowered in a clear seated position. Arms bent relaxed in front. Preserve cap face red shirt blue jeans shoes, same head size and pixel scale, centered at x48 on transparent 96x96. Head stays around y54, shoes around y78, torso upright. Only one character; do NOT draw the friend, stool or any mount.",
+      "job": [
+        {
+          "type": "text",
+          "text": "id: f60555ae-8beb-4dac-83d8-75fbe4c27d68\njob_id: f60555ae-8beb-4dac-83d8-75fbe4c27d68\nmode: text\nframes: 1\nsize: 96x96px\ntransparent: True\nedit: Edit only the pose of this tiny side-view pixel character facing right: sitting astride an invisible friend's shoulders, knees bent forward and shoes hanging down, hips lowered in a clear seated position. Arms bent relaxed in front. Preserve cap face red shirt blue jeans shoes, same head size and pixel scale, centered at x48 on transparent 96x96. Head stays around y54, shoes around y78, torso upright. Only one character; do NOT draw the friend, stool or any mount.\nasset_id: b42ad9dd-5234-5c27-9438-4042e5cf912d\nasset_status: pending (saved when generation completes)\ncost: ~10 generations\nstatus: processing (~30-90s)\n\nhint: get_image(job_id=\"f60555ae-8beb-4dac-83d8-75fbe4c27d68\")"
+        }
+      ]
+    },
+    {
+      "name": "hombros_cargar",
+      "prompt": "Edit this tiny side-view pixel character facing right into a seated shoulder-rider who also carries another rider: knees bent in a seated straddle, hips lowered, torso upright, BOTH elbows outward and BOTH hands raised beside ears to support invisible ankles. Same cap face red shirt blue jeans shoes, original pixel scale and head size, centered x48 in transparent96x96, head aroundy54 shoes aroundy78. Exactly ONE character, no other person, no mount, no objects.",
+      "job": [
+        {
+          "type": "text",
+          "text": "id: 973da98b-5d66-45f9-a990-625a0a521cf6\njob_id: 973da98b-5d66-45f9-a990-625a0a521cf6\nmode: text\nframes: 1\nsize: 96x96px\ntransparent: True\nedit: Edit this tiny side-view pixel character facing right into a seated shoulder-rider who also carries another rider: knees bent in a seated straddle, hips lowered, torso upright, BOTH elbows outward and BOTH hands raised beside ears to support invisible ankles. Same cap face red shirt blue jeans shoes, original pixel scale and head size, centered x48 in transparent96x96, head aroundy54 shoes aroundy78. Exactly ONE character, no other person, no mount, no objects.\nasset_id: 3374693c-14bb-5a28-917e-637d223469be\nasset_status: pending (saved when generation completes)\ncost: ~10 generations\nstatus: processing (~30-90s)\n\nhint: get_image(job_id=\"973da98b-5d66-45f9-a990-625a0a521cf6\")"
+        }
+      ]
+    }
+  ],
+  "animations": [
+    {
+      "name": "cargar_quieto",
+      "reference": "cargar_quieto",
+      "requestedFrames": 4,
+      "prompt": "Subtle idle breathing, keeping BOTH hands beside the head holding an invisible rider's ankles. Feet planted, body stays exactly same size and position. No added rider. Seamless loop.",
+      "result": [
+        {
+          "type": "text",
+          "text": "status: completed\nid: 67ae63fb-4cb2-452d-bf34-a11486982321\njob_id: 67ae63fb-4cb2-452d-bf34-a11486982321\nframes: 5\ntransparent: yes\nasset_id: 624025c9-fa9f-55a1-a985-c6e5d9eb6536\nasset_type: image\nasset_status: saved\ngallery: saved to your PixelLab gallery (pixellab.ai/create)\ncharged: 1 generation\ndownload: https://api.pixellab.ai/mcp/images/67ae63fb-4cb2-452d-bf34-a11486982321/download?index=0 ... ?index=4"
+        },
+        {
+          "type": "text",
+          "text": "(1 more frames not shown — fetch them from the download URLs above)"
+        }
+      ]
+    },
+    {
+      "name": "cargar_caminar",
+      "reference": "cargar_quieto",
+      "requestedFrames": 8,
+      "prompt": "Walk in place to the right while holding BOTH hands beside the head to support an invisible rider's ankles. Only legs step, torso stays steady, hands stay raised, no arm swinging. Keep exact tiny sprite size and coordinates. No rider. Seamless loop.",
+      "result": [
+        {
+          "type": "text",
+          "text": "status: completed\nid: ae671a6f-0100-4fa5-851c-e9855c07f28b\njob_id: ae671a6f-0100-4fa5-851c-e9855c07f28b\nframes: 9\ntransparent: yes\nasset_id: a1c79910-16f6-5c27-ac7d-635857f479d6\nasset_type: image\nasset_status: saved\ngallery: saved to your PixelLab gallery (pixellab.ai/create)\ncharged: 2 generations\ndownload: https://api.pixellab.ai/mcp/images/ae671a6f-0100-4fa5-851c-e9855c07f28b/download?index=0 ... ?index=8"
+        },
+        {
+          "type": "text",
+          "text": "(5 more frames not shown — fetch them from the download URLs above)"
+        }
+      ]
+    },
+    {
+      "name": "hombros_quieto",
+      "reference": "hombros_quieto",
+      "requestedFrames": 4,
+      "prompt": "Subtle seated breathing while riding invisible shoulders. Keep knees bent, feet dangling and hips anchored, no standing or walking. Same size and position throughout. No additional character. Seamless loop.",
+      "result": [
+        {
+          "type": "text",
+          "text": "status: completed\nid: a1f1bdfa-4342-4785-9263-92fb1d8b30d3\njob_id: a1f1bdfa-4342-4785-9263-92fb1d8b30d3\nframes: 5\ntransparent: yes\nasset_id: 4880c964-ba06-57a4-af71-3d3f4bcf15d0\nasset_type: image\nasset_status: saved\ngallery: saved to your PixelLab gallery (pixellab.ai/create)\ncharged: 1 generation\ndownload: https://api.pixellab.ai/mcp/images/a1f1bdfa-4342-4785-9263-92fb1d8b30d3/download?index=0 ... ?index=4"
+        },
+        {
+          "type": "text",
+          "text": "(1 more frames not shown — fetch them from the download URLs above)"
+        }
+      ]
+    },
+    {
+      "name": "hombros_cargar",
+      "reference": "hombros_cargar",
+      "requestedFrames": 4,
+      "prompt": "Subtle seated breathing while holding both hands up beside ears to support invisible ankles. Keep hips anchored and knees bent, no walking, no standing. Preserve exact tiny sprite size and coordinates. No additional character. Seamless loop.",
+      "result": [
+        {
+          "type": "text",
+          "text": "status: completed\nid: 7ca8394c-8659-41e2-bd11-8ce567978fff\njob_id: 7ca8394c-8659-41e2-bd11-8ce567978fff\nframes: 5\ntransparent: yes\nasset_id: 92a9bdb3-fba9-5b7e-a8f7-352a0f56132e\nasset_type: image\nasset_status: saved\ngallery: saved to your PixelLab gallery (pixellab.ai/create)\ncharged: 1 generation\ndownload: https://api.pixellab.ai/mcp/images/7ca8394c-8659-41e2-bd11-8ce567978fff/download?index=0 ... ?index=4"
+        },
+        {
+          "type": "text",
+          "text": "(1 more frames not shown — fetch them from the download URLs above)"
+        }
+      ]
+    },
+    {
+      "name": "cargar_golpear",
+      "reference": "cargar_quieto",
+      "requestedFrames": 8,
+      "prompt": "One quick rightward punch: keep one hand raised supporting invisible rider, draw other fist slightly back, extend forward fully by frame 3, then retract it beside head. Standing feet anchored. Preserve size and exact position. No added character. Return to starting pose.",
+      "result": [
+        {
+          "type": "text",
+          "text": "status: completed\nid: 1bb1c384-36d5-4f9a-aabc-1553c2ea5569\njob_id: 1bb1c384-36d5-4f9a-aabc-1553c2ea5569\nframes: 9\ntransparent: yes\nasset_id: 989909bf-70fe-5a73-be66-da18c3b1d429\nasset_type: image\nasset_status: saved\ngallery: saved to your PixelLab gallery (pixellab.ai/create)\ncharged: 2 generations\ndownload: https://api.pixellab.ai/mcp/images/1bb1c384-36d5-4f9a-aabc-1553c2ea5569/download?index=0 ... ?index=8"
+        },
+        {
+          "type": "text",
+          "text": "(5 more frames not shown — fetch them from the download URLs above)"
+        }
+      ]
+    },
+    {
+      "name": "hombros_golpear",
+      "reference": "hombros_quieto",
+      "requestedFrames": 8,
+      "prompt": "One quick rightward punch from sitting astride invisible shoulders: fist draws slightly back, extends fully by frame3 then retracts. Hips anchored and both knees stay bent, feet dangling, no standing up. Same size and position. No added character. Return to starting seated pose.",
+      "result": [
+        {
+          "type": "text",
+          "text": "status: completed\nid: 7902e2af-f6da-4615-b945-ca656c4176a7\njob_id: 7902e2af-f6da-4615-b945-ca656c4176a7\nframes: 9\ntransparent: yes\nasset_id: a0b8b946-b6e9-5b3e-bf19-2506e3778da2\nasset_type: image\nasset_status: saved\ngallery: saved to your PixelLab gallery (pixellab.ai/create)\ncharged: 2 generations\ndownload: https://api.pixellab.ai/mcp/images/7902e2af-f6da-4615-b945-ca656c4176a7/download?index=0 ... ?index=8"
+        },
+        {
+          "type": "text",
+          "text": "(5 more frames not shown — fetch them from the download URLs above)"
+        }
+      ]
+    },
+    {
+      "name": "hombros_cargar_golpear",
+      "reference": "hombros_cargar",
+      "requestedFrames": 8,
+      "prompt": "One quick rightward punch from seated pose while carrying invisible rider: keep one hand beside head supporting ankles, extend other fist fully by frame3 then retract beside head. Hips anchored knees bent feet dangling throughout, no standing. Preserve exact tiny size and position. No other character. Return to initial pose.",
+      "result": [
+        {
+          "type": "text",
+          "text": "status: completed\nid: e0fe579f-3994-4530-9674-f776abdd8427\njob_id: e0fe579f-3994-4530-9674-f776abdd8427\nframes: 9\ntransparent: yes\nasset_id: 6e69c416-5d1a-52f2-8c63-5949ecabd0a1\nasset_type: image\nasset_status: saved\ngallery: saved to your PixelLab gallery (pixellab.ai/create)\ncharged: 2 generations\ndownload: https://api.pixellab.ai/mcp/images/e0fe579f-3994-4530-9674-f776abdd8427/download?index=0 ... ?index=8"
+        },
+        {
+          "type": "text",
+          "text": "(5 more frames not shown — fetch them from the download URLs above)"
+        }
+      ]
+    }
+  ],
+  "integration": "PNG originales con alfa. Atlas de los sprites hombros_cargar limitado a y48..95 para excluir figuras sobrantes; reposo de base usa los dos primeros cuadros. Escalas y pivotes por postura en jugador.gd."
+}

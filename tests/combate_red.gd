@@ -146,11 +146,13 @@ class Prueba extends Node:
 		anfitrion.borrachera = 30
 		anfitrion._espera_servidor = 0
 		anfitrion.golpear(1)
+		await _esperar(0.12)
 		_comprobar(jefe.vida == 285, "Alegre aumenta el daño del golpe a 15")
 		anfitrion.borrachera = 80
 		anfitrion._espera_servidor = 0
 		jefe.position = anfitrion.position + Vector2(110, 0)
 		anfitrion.golpear(1)
+		await _esperar(0.12)
 		_comprobar(jefe.vida == 255, "Ven pa'cá causa 30 de daño y tiene más alcance")
 		await _probar_final(anfitrion, invitado)
 
@@ -196,12 +198,20 @@ class Prueba extends Node:
 		await _esperar(0.2)
 		_orden.rpc_id(cliente, "beber_doble")
 		await _esperar(2.2)
+		_comprobar(invitado.nausea > 0 and invitado.vomitando == 0,
+			"El exceso primero da náusea (cachetes inflados) antes de vomitar")
+		# Las arcadas con E lo hacen vomitar antes de que se acabe la náusea.
+		for i in invitado.ARCADAS:
+			invitado.pedir_arcada()
+		await _esperar(0.2)
 		await _consultar()
 		_comprobar(invitado.vomitando > 0 and informe.charcos == 1,
 			"El exceso provoca vómito y un charco sincronizado")
+		var vida_antes_charco: int = anfitrion.vida
 		anfitrion._reaparecer.rpc(get_tree().get_first_node_in_group("charcos").position)
 		await _esperar(0.15)
 		_comprobar(anfitrion.aturdimiento > 0, "El charco hace resbalar a otro jugador")
+		_comprobar(anfitrion.vida == vida_antes_charco - 5, "Pisar el charco de vómito quita vida")
 		await _esperar(2.5)
 		_colocar.rpc(Vector2(1600, 520))
 		await _esperar(0.2)

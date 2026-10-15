@@ -47,8 +47,11 @@ class Recorrido extends Node:
 			if numero == 1:
 				await get_tree().create_timer(4.0).timeout
 				_comprobar(jugador.borrachera == 30, "La borrachera no desaparece mientras buscas más chelas")
+		_comprobar(jugador.nausea > 0 and informe.nausea > 0 and informe.charcos == 0,
+			"La cuarta cerveza, partiendo de sobrio, da náusea antes de vomitar")
+		await _orden("vomitar")
 		_comprobar(jugador.vomitando > 0 and informe.vomitando > 0 and informe.charcos == 1,
-			"La cuarta cerveza, partiendo de sobrio, provoca vómito y charco")
+			"Machacar E con náusea provoca el vómito y el charco")
 		_comprobar(partida.estadisticas[cliente].cervezas == 4, "Las estadísticas cuentan cuatro bebidas reales")
 		await get_tree().create_timer(3.0).timeout
 		await _orden("recoger", partida.SUMINISTROS[6])
@@ -84,6 +87,12 @@ class Recorrido extends Node:
 			Input.action_press("agarrar")
 			await get_tree().create_timer(0.08).timeout
 			Input.action_release("agarrar")
+		elif accion == "vomitar":
+			for i in j.ARCADAS:
+				Input.action_press("agarrar")
+				await get_tree().create_timer(0.08).timeout
+				Input.action_release("agarrar")
+				await get_tree().create_timer(0.08).timeout
 		else:
 			Input.action_press("beber")
 			await get_tree().create_timer(0.08).timeout
@@ -91,7 +100,7 @@ class Recorrido extends Node:
 			await get_tree().create_timer(2.05).timeout
 		await get_tree().create_timer(0.1).timeout
 		_informar.rpc_id(1, {"cervezas": j.cervezas, "nivel": j.nivel_borrachera(),
-			"vomitando": j.vomitando, "charcos": get_tree().get_nodes_in_group("charcos").size()})
+			"vomitando": j.vomitando, "nausea": j.nausea, "charcos": get_tree().get_nodes_in_group("charcos").size()})
 
 
 	@rpc("any_peer", "reliable")

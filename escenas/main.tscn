@@ -1,33 +1,37 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene format=3 uid="uid://ctq1lmv62byvs"]
 
-[ext_resource type="Script" path="res://scripts/main.gd" id="1"]
-[ext_resource type="Script" path="res://scripts/sala.gd" id="2"]
+[ext_resource type="Script" uid="uid://kej4yolbhsj5" path="res://scripts/main.gd" id="1"]
+[ext_resource type="Script" uid="uid://rulixbalhfpi" path="res://scripts/sala.gd" id="2"]
 [ext_resource type="PackedScene" path="res://escenas/bosque.tscn" id="3"]
-[ext_resource type="Script" path="res://scripts/hud_partida.gd" id="4"]
+[ext_resource type="Script" uid="uid://b844m32t56nok" path="res://scripts/hud_partida.gd" id="4"]
 
-[node name="Main" type="Node"]
+[node name="Main" type="Node" unique_id=483745321]
 script = ExtResource("1")
 
-[node name="Juego" parent="." instance=ExtResource("3")]
+[node name="Juego" parent="." unique_id=1309422187 instance=ExtResource("3")]
 
-[node name="UI" type="CanvasLayer" parent="."]
+[node name="UI" type="CanvasLayer" parent="." unique_id=1564173404]
 
-[node name="Ayuda" type="Label" parent="UI"]
+[node name="Ayuda" type="Label" parent="UI" unique_id=1095286899]
 offset_left = 16.0
 offset_top = 12.0
 offset_right = 1260.0
 offset_bottom = 40.0
+theme_override_colors/font_outline_color = Color(0.05, 0.12, 0.1, 1)
+theme_override_constants/outline_size = 4
 theme_override_font_sizes/font_size = 14
-text = "WASD / stick: mover · Espacio / A: saltar · J / X: golpear · Shift / B: rodar · Q / RB: beber · E / Y: recoger / mantener para levantar · Esc: salir"
+text = "WASD / stick: mover · Espacio / A: saltar · J / X: golpear · Shift / B: rodar · Q / RB: beber · F / LB: lanzar botella · E / Y: recoger / mantener para levantar · Esc: salir"
 
-[node name="Mision" type="Label" parent="UI"]
+[node name="Mision" type="Label" parent="UI" unique_id=977396987]
 offset_left = 16.0
 offset_top = 40.0
 offset_right = 1260.0
 offset_bottom = 68.0
 theme_override_colors/font_color = Color(1, 0.9, 0.5, 1)
+theme_override_colors/font_outline_color = Color(0.05, 0.12, 0.1, 1)
+theme_override_constants/outline_size = 4
 
-[node name="Jefe" type="Control" parent="UI"]
+[node name="Jefe" type="Control" parent="UI" unique_id=1443270285]
 visible = false
 layout_mode = 3
 anchors_preset = 5
@@ -40,14 +44,14 @@ offset_bottom = 120.0
 grow_horizontal = 2
 mouse_filter = 2
 
-[node name="Texto" type="Label" parent="UI/Jefe"]
+[node name="Texto" type="Label" parent="UI/Jefe" unique_id=108705284]
 layout_mode = 0
 offset_right = 600.0
 offset_bottom = 24.0
 text = "Mamá Osa"
 horizontal_alignment = 1
 
-[node name="Fondo" type="ColorRect" parent="UI/Jefe"]
+[node name="Fondo" type="ColorRect" parent="UI/Jefe" unique_id=2091467917]
 layout_mode = 0
 offset_top = 26.0
 offset_right = 600.0
@@ -55,7 +59,7 @@ offset_bottom = 42.0
 mouse_filter = 2
 color = Color(0, 0, 0, 0.6)
 
-[node name="Barra" type="ColorRect" parent="UI/Jefe"]
+[node name="Barra" type="ColorRect" parent="UI/Jefe" unique_id=813358074]
 layout_mode = 0
 offset_top = 26.0
 offset_right = 600.0
@@ -63,7 +67,7 @@ offset_bottom = 42.0
 mouse_filter = 2
 color = Color(0.8, 0.2, 0.15, 1)
 
-[node name="Marca1" type="ColorRect" parent="UI/Jefe"]
+[node name="Marca1" type="ColorRect" parent="UI/Jefe" unique_id=1940566354]
 layout_mode = 0
 offset_left = 198.0
 offset_top = 24.0
@@ -71,7 +75,7 @@ offset_right = 202.0
 offset_bottom = 44.0
 mouse_filter = 2
 
-[node name="Marca2" type="ColorRect" parent="UI/Jefe"]
+[node name="Marca2" type="ColorRect" parent="UI/Jefe" unique_id=1553350017]
 layout_mode = 0
 offset_left = 398.0
 offset_top = 24.0
@@ -79,7 +83,7 @@ offset_right = 402.0
 offset_bottom = 44.0
 mouse_filter = 2
 
-[node name="Aviso" type="Label" parent="UI"]
+[node name="Aviso" type="Label" parent="UI" unique_id=1075790260]
 anchors_preset = 12
 anchor_top = 1.0
 anchor_right = 1.0
@@ -90,7 +94,7 @@ grow_horizontal = 2
 grow_vertical = 0
 horizontal_alignment = 1
 
-[node name="Menu" type="VBoxContainer" parent="UI"]
+[node name="Menu" type="VBoxContainer" parent="UI" unique_id=1016677986]
 anchors_preset = 8
 anchor_left = 0.5
 anchor_top = 0.5
@@ -105,35 +109,35 @@ grow_vertical = 2
 theme_override_constants/separation = 12
 alignment = 1
 
-[node name="Titulo" type="Label" parent="UI/Menu"]
+[node name="Titulo" type="Label" parent="UI/Menu" unique_id=1892450113]
 layout_mode = 2
 theme_override_font_sizes/font_size = 40
 text = "Bear and Beer"
 horizontal_alignment = 1
 
-[node name="Nombre" type="LineEdit" parent="UI/Menu"]
+[node name="Nombre" type="LineEdit" parent="UI/Menu" unique_id=525119284]
 layout_mode = 2
 placeholder_text = "Tu nombre"
 alignment = 1
 max_length = 12
 
-[node name="Crear" type="Button" parent="UI/Menu"]
+[node name="Crear" type="Button" parent="UI/Menu" unique_id=27432756]
 layout_mode = 2
 text = "Crear partida"
 
-[node name="Unirse" type="Button" parent="UI/Menu"]
+[node name="Unirse" type="Button" parent="UI/Menu" unique_id=771616042]
 layout_mode = 2
 text = "Unirse a amigo"
 
-[node name="Opciones" type="Button" parent="UI/Menu"]
+[node name="Opciones" type="Button" parent="UI/Menu" unique_id=724207300]
 layout_mode = 2
 text = "Opciones"
 
-[node name="Salir" type="Button" parent="UI/Menu"]
+[node name="Salir" type="Button" parent="UI/Menu" unique_id=1144157980]
 layout_mode = 2
 text = "Salir"
 
-[node name="Unirse" type="VBoxContainer" parent="UI"]
+[node name="Unirse" type="VBoxContainer" parent="UI" unique_id=594966740]
 visible = false
 anchors_preset = 8
 anchor_left = 0.5
@@ -149,31 +153,31 @@ grow_vertical = 2
 theme_override_constants/separation = 12
 alignment = 1
 
-[node name="Titulo" type="Label" parent="UI/Unirse"]
+[node name="Titulo" type="Label" parent="UI/Unirse" unique_id=333527053]
 layout_mode = 2
 theme_override_font_sizes/font_size = 28
 text = "Unirse a amigo"
 horizontal_alignment = 1
 
-[node name="Texto" type="Label" parent="UI/Unirse"]
+[node name="Texto" type="Label" parent="UI/Unirse" unique_id=266922924]
 layout_mode = 2
 text = "IP del anfitrión"
 horizontal_alignment = 1
 
-[node name="IP" type="LineEdit" parent="UI/Unirse"]
+[node name="IP" type="LineEdit" parent="UI/Unirse" unique_id=497562367]
 layout_mode = 2
 text = "127.0.0.1"
 alignment = 1
 
-[node name="Conectar" type="Button" parent="UI/Unirse"]
+[node name="Conectar" type="Button" parent="UI/Unirse" unique_id=1320191863]
 layout_mode = 2
 text = "Conectar"
 
-[node name="Volver" type="Button" parent="UI/Unirse"]
+[node name="Volver" type="Button" parent="UI/Unirse" unique_id=1392111427]
 layout_mode = 2
 text = "Volver"
 
-[node name="Opciones" type="VBoxContainer" parent="UI"]
+[node name="Opciones" type="VBoxContainer" parent="UI" unique_id=1136686076]
 visible = false
 anchors_preset = 8
 anchor_left = 0.5
@@ -189,31 +193,31 @@ grow_vertical = 2
 theme_override_constants/separation = 12
 alignment = 1
 
-[node name="Titulo" type="Label" parent="UI/Opciones"]
+[node name="Titulo" type="Label" parent="UI/Opciones" unique_id=891087205]
 layout_mode = 2
 theme_override_font_sizes/font_size = 28
 text = "Opciones"
 horizontal_alignment = 1
 
-[node name="PantallaCompleta" type="CheckButton" parent="UI/Opciones"]
+[node name="PantallaCompleta" type="CheckButton" parent="UI/Opciones" unique_id=1281785919]
 layout_mode = 2
 text = "Pantalla completa"
 
-[node name="TextoVolumen" type="Label" parent="UI/Opciones"]
+[node name="TextoVolumen" type="Label" parent="UI/Opciones" unique_id=1245203903]
 layout_mode = 2
 text = "Volumen"
 
-[node name="Volumen" type="HSlider" parent="UI/Opciones"]
+[node name="Volumen" type="HSlider" parent="UI/Opciones" unique_id=1357622517]
 layout_mode = 2
 max_value = 1.0
 step = 0.05
 value = 1.0
 
-[node name="Volver" type="Button" parent="UI/Opciones"]
+[node name="Volver" type="Button" parent="UI/Opciones" unique_id=306176317]
 layout_mode = 2
 text = "Volver"
 
-[node name="Sala" type="VBoxContainer" parent="UI"]
+[node name="Sala" type="VBoxContainer" parent="UI" unique_id=787423300]
 visible = false
 anchors_preset = 8
 anchor_left = 0.5
@@ -230,47 +234,47 @@ theme_override_constants/separation = 12
 alignment = 1
 script = ExtResource("2")
 
-[node name="Titulo" type="Label" parent="UI/Sala"]
+[node name="Titulo" type="Label" parent="UI/Sala" unique_id=1632712367]
 layout_mode = 2
 theme_override_font_sizes/font_size = 28
 text = "Sala de espera"
 horizontal_alignment = 1
 
-[node name="Info" type="Label" parent="UI/Sala"]
+[node name="Info" type="Label" parent="UI/Sala" unique_id=713567682]
 layout_mode = 2
 horizontal_alignment = 1
 
-[node name="Lugares" type="GridContainer" parent="UI/Sala"]
+[node name="Lugares" type="GridContainer" parent="UI/Sala" unique_id=1401767224]
 layout_mode = 2
 size_flags_horizontal = 4
 theme_override_constants/h_separation = 16
 theme_override_constants/v_separation = 16
 columns = 3
 
-[node name="TextoColor" type="Label" parent="UI/Sala"]
+[node name="TextoColor" type="Label" parent="UI/Sala" unique_id=6316101]
 layout_mode = 2
 text = "Elige tu color"
 horizontal_alignment = 1
 
-[node name="Colores" type="HBoxContainer" parent="UI/Sala"]
+[node name="Colores" type="HBoxContainer" parent="UI/Sala" unique_id=406036306]
 layout_mode = 2
 theme_override_constants/separation = 10
 alignment = 1
 
-[node name="Listo" type="Button" parent="UI/Sala"]
+[node name="Listo" type="Button" parent="UI/Sala" unique_id=626207061]
 layout_mode = 2
 toggle_mode = true
 text = "Estoy listo"
 
-[node name="Empezar" type="Button" parent="UI/Sala"]
+[node name="Empezar" type="Button" parent="UI/Sala" unique_id=924483359]
 layout_mode = 2
 text = "Empezar partida"
 
-[node name="Salir" type="Button" parent="UI/Sala"]
+[node name="Salir" type="Button" parent="UI/Sala" unique_id=138413582]
 layout_mode = 2
 text = "Salir de la sala"
 
-[node name="HUD" type="Control" parent="UI"]
+[node name="HUD" type="Control" parent="UI" unique_id=799446554]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
