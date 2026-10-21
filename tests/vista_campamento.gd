@@ -18,6 +18,8 @@ func _abrir() -> void:
 		await RenderingServer.frame_post_draw
 		root.get_texture().get_image().save_png("user://vista_sala.png")
 	red.iniciar_partida()
+	while main.jugadores.get_node_or_null("1") == null:
+		await process_frame
 	await create_timer(1.0).timeout
 	if "--capturas" not in OS.get_cmdline_user_args():
 		return

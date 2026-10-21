@@ -4,6 +4,7 @@ extends Node2D
 ## un osezno. La controla el anfitrión; los demás solo reciben su estado.
 
 const VIDA_BASE := 300
+var alto_botella := 170.0
 const VIDA_POR_JUGADOR := 200
 const VELOCIDADES := [150.0, 175.0, 200.0]
 const ESPERA_ESPECIAL := [7.0, 5.0, 3.5]
@@ -21,16 +22,21 @@ const DANO_SALIDA := 15
 const DANO_OLLA := 25
 const ATURDE_RUGIDO := 1.6
 const VELOCIDAD_EMBESTIDA := 520.0
+const PASO_EMBESTIDA := 8.0
+const ANTICIPACION_ORILLA := 40.0
 # Zona de la pelea: no sale de la orilla del lago.
-const ZONA := Rect2(5100, 485, 1800, 205)
+const ZONA := Rect2(5100, 300, 1800, 390)
 # Tramo de la orilla donde está el agua del lago (para aventarse y salir de él).
 const LAGO_X := Vector2(5550, 6250)
 const LAGO_Y := 525.0
 # Cada fase tiene su propio oso: arte/mama_osa/fase<N>/<animación>/<cuadro>.png
-# Los cuadros miran a la derecha y pasaron por herramientas/normalizar_sprites.ps1,
-# que los deja en un lienzo de 96x96 con las patas en la fila 80.
+# Los cuadros miran a la derecha y pasaron por herramientas/normalizar_osa.py,
+# que los deja en un lienzo de 256x256 con las patas en la fila PIES_SPRITE.
+# Se dibujan a escala 1 (como el jugador).
 const CARPETA_ARTE := "res://arte/mama_osa/fase%d/%s/%d.png"
-const DESFASE_SPRITE := Vector2(0, -32)
+const LIENZO_SPRITE := 256.0
+const PIES_SPRITE := 252.0
+const DESFASE_SPRITE := Vector2(0, LIENZO_SPRITE * 0.5 - PIES_SPRITE)
 # Animación -> [segundos que dura una vuelta, si se repite].
 const ANIMACIONES := {
 	"agarre": [1.9, false],
@@ -42,6 +48,9 @@ const ANIMACIONES := {
 	"golpe_piso": [1.25, false],
 	"salto": [1.2, false],
 	"derrota": [1.6, false],
+	"mareada": [1.2, true],
+	"forcejeo": [1.1, true],
+	"empujar_pie": [0.9, true],
 }
 # Qué animación se ve en cada estado; en los demás camina o está quieta.
 const ANIMACION_POR_ESTADO := {
@@ -52,11 +61,14 @@ const ANIMACION_POR_ESTADO := {
 	"llegando": "salto", "al_lago": "salto", "salida": "salto",
 	"con_crias": "quieta", "pausa": "quieta", "derrotada": "derrota",
 	"cambio_fase": "rugido",
+	"tambaleando": "mareada",
+	"rivalidad": "zarpazo",
 	"aviso_agarre": "agarre", "agarrando": "agarre", "lanzando": "agarre",
 }
 const DURACION_CAMBIO_FASE := 1.3
 const AVISOS := {
 	"cambio_fase": "¡SE ENFURECE!",
+	"tambaleando": "¡TAMBALEANDO!",
 	"aviso_agarre": "¡TE VA A AGARRAR, RUEDA!", "agarrando": "¡LO AGARRÓ!", "lanzando": "¡A VOLAR!",
 	"aviso_zarpazo": "¡ZARPAZO!", "aviso_embestida": "¡VA A EMBESTIR!", "embestida": "¡EMBISTE!",
 	"aviso_rugido": "¡VA A RUGIR!", "rugido": "¡GRRROOOAR!", "aviso_piso": "¡GOLPE AL PISO, SALTEN!",
@@ -81,17 +93,27 @@ var _duracion := 1.0
 var _especial := 0.0
 var _revisar := 0.0
 var _espera_enojo := 0.0
+## Tras tambalearse no puede volver a tambalearse en un rato; así no se queda trabada.
+const INMUNE_TAMBALEO := 3.0
+var _sin_tambaleo := 0.0
 var _turno := 0
 var _fase_anunciada := 1
 var _agarrado: Node2D = null
 var _dir := Vector2.ZERO
+var _lado_desvio := 0
 var _destino := Vector2.ZERO
 var _golpeados: Array = []
 var _vida_vista := 1
+var _estado_oido := ""
+var _pisoton := 0.0
+var _grunido := 0.0
 var _parpadeo := 0.0
 var _animacion := ""
 var _posicion_vista := Vector2.ZERO
 var _moviendose := 0.0
+var _estrellas: Node2D
+## Dónde dar vueltas las estrellitas de mareo (hacia adelante, sobre la cabeza).
+const CABEZA := Vector2(30, -245)
 
 @onready var visual: Node2D = $Visual
 @onready var sprite: AnimatedSprite2D = $Visual/Sprite
@@ -103,6 +125,10 @@ func _ready() -> void:
 	add_to_group("golpeables")
 	add_to_group("jefe")
 	_cargar_animaciones()
+	_estrellas = Estrellas.new()
+	_estrellas.position = CABEZA
+	_estrellas.visible = false
+	visual.add_child(_estrellas)
 
 
 # Arma las animaciones con los cuadros sueltos de arte/mama_osa/<nombre>/0.png, 1.png...
@@ -127,7 +153,7 @@ func texto() -> String:
 	if estado == "derrotada":
 		return "¡Vencieron a Mamá Osa! Recuperaron unas chelas. Fin de la Zona 1 (por ahora)."
 	var olla: int = _estacion().vida_olla
-	return "¡Peleen contra Mamá Osa! Protejan la olla y no les peguen a los oseznos, o se enfurece.      %s" % (
+	return "¡Peleen contra Mamá Osa!\nProtejan la olla y no les peguen a los oseznos, o se enfurece.\n%s" % (
 		"Olla: %d" % olla if olla > 0 else "Olla rota")
 
 
@@ -171,6 +197,7 @@ func _physics_process(delta: float) -> void:
 	_especial -= delta
 	_revisar -= delta
 	_espera_enojo -= delta
+	_sin_tambaleo -= delta
 	fase = maxi(fase, _fase_por_vida())
 
 	match estado:
@@ -197,8 +224,7 @@ func _physics_process(delta: float) -> void:
 				position = _dentro(position.move_toward(presa.position - Vector2(lado * 70.0, 0.0),
 					VELOCIDADES[fase - 1] * 1.5 * delta))
 		"embestida":
-			position = _dentro(position + _dir * VELOCIDAD_EMBESTIDA * delta)
-			_pegar(position, 60.0, 30.0, DANO_EMBESTIDA, 1.6)
+			_avanzar_embestida(delta)
 		"al_lago":
 			position = position.move_toward(_destino, 420.0 * delta)
 			altura = 60.0 * sin(PI * _avance())
@@ -220,9 +246,29 @@ func _process(delta: float) -> void:
 	_parpadeo -= delta
 	visual.position.y = -altura
 	visual.scale.x = mirando
+	_estrellas.visible = estado == "tambaleando"
 	# Al recibir un golpe destella en claro.
 	sprite.modulate = Color(4, 4, 4) if _parpadeo > 0.0 else Color.WHITE
 	aviso.text = AVISOS.get(estado, "")
+	if estado != _estado_oido:
+		_sonar(estado)
+		_estado_oido = estado
+		_pisoton = 0.0
+	# Durante la embestida suenan pisotones seguidos.
+	if estado == "embestida":
+		_pisoton -= delta
+		if _pisoton <= 0.0:
+			_pisoton = 0.5
+			Audio.efecto_seguido("pisoton", -2.0, 0.12)
+	# Mientras forcejea con la abeja, gruñe de esfuerzo una y otra vez.
+	var rival: Node2D = get_tree().get_first_node_in_group("abeja_musculosa")
+	if rival != null and rival.estado == "forcejeo_osa":
+		_grunido -= delta
+		if _grunido <= 0.0:
+			_grunido = 2.2
+			Audio.efecto_seguido("osa_forcejeo_grunido", 0.0, 0.05)
+	else:
+		_grunido = 0.0
 
 	# Camina solo mientras de verdad se está desplazando.
 	_moviendose -= delta
@@ -230,6 +276,18 @@ func _process(delta: float) -> void:
 		_moviendose = 0.15
 	_posicion_vista = position
 	var animacion: String = ANIMACION_POR_ESTADO.get(estado, "caminar" if _moviendose > 0.0 else "quieta")
+	sprite.position.x = 0.0
+	if estado == "rivalidad":
+		# Contra la abeja: zarpazos seguidos y, al forcejear, la empuja con la pata.
+		var abeja: Node2D = get_tree().get_first_node_in_group("abeja_musculosa")
+		if abeja != null and abeja.estado == "forcejeo_osa":
+			animacion = "empujar_pie"
+			# Avanza hacia la abeja cuando va ganando y retrocede cuando va perdiendo.
+			sprite.position.x = (0.5 - abeja.fuerza) * 18 + sin(abeja.tiempo * 22) * 1.5
+		elif not sprite.is_playing():
+			# El zarpazo no se repite solo: se reinicia en cuanto termina.
+			sprite.set_frame_and_progress(0, 0.0)
+			sprite.play()
 	# Al cambiar de fase cambia de oso, así que la animación vuelve a empezar.
 	animacion = "%d_%s" % [fase, animacion]
 	if animacion != _animacion:
@@ -246,6 +304,27 @@ func _process(delta: float) -> void:
 			_efecto(Rect2(-420, -10, 840, 22), Color(0.3, 0.2, 0.1, 0.6))
 		"salida":
 			_efecto(Rect2(-150, -50, 300, 60), Color(0.4, 0.7, 1, 0.55))
+
+
+# Corre en todas las pantallas cuando cambia el estado sincronizado.
+func _sonar(nuevo: String) -> void:
+	match nuevo:
+		"llegando":
+			Audio.efecto("rugido-oso")
+			Audio.musica("jefe")
+		"rugido", "cambio_fase":
+			Audio.efecto("rugido-oso", 0.0, 0.05)
+		"zarpazo":
+			Audio.efecto("zarpazo")
+		"embestida":
+			Audio.efecto("rugido-oso", -6.0, 0.2)
+		"piso":
+			Audio.efecto("caer", 2.0, 0.0)
+		"lago", "salida":
+			Audio.efecto("chapuzon")
+		"derrotada":
+			Audio.efecto("rugido-oso", -2.0, 0.0)
+			Audio.musica("bosque")
 
 
 # --- Lo que sigue solo corre en el anfitrión ---
@@ -311,6 +390,8 @@ func _siguiente() -> void:
 		"aviso_zarpazo":
 			_golpeados.clear()
 			_pegar(position + Vector2(mirando * 60.0, 0.0), 75.0, 32.0, DANO_ZARPAZO, 1.2)
+			if estado == "tambaleando":
+				return
 			_cambiar("zarpazo", 0.2)
 		"zarpazo":
 			_cambiar("pausa", 0.45)
@@ -366,6 +447,52 @@ func liberar_jugador(jugador: Node2D) -> void:
 		_agarrado = null
 
 
+## La abeja musculosa la provocó: deja a los jugadores y se pelea con ella.
+## La abeja dirige el pleito y la suelta con terminar_rivalidad().
+func empezar_rivalidad() -> void:
+	if not multiplayer.is_server():
+		return
+	if is_instance_valid(_agarrado):
+		_agarrado.aturdimiento = 0
+		_agarrado._aplicar_empujon.rpc(mirando, 0.25)
+		_agarrado = null
+	altura = 0.0
+	_golpeados.clear()
+	_cambiar("rivalidad", 999.0)
+
+
+func terminar_rivalidad() -> void:
+	if multiplayer.is_server() and estado == "rivalidad":
+		_cambiar("pausa", 0.6)
+
+
+## Daño de la abeja musculosa (no cuenta en las estadísticas de los jugadores).
+func danar_por_abeja(dano: int) -> void:
+	if not multiplayer.is_server() or not activa or estado == "derrotada":
+		return
+	vida = maxi(vida - dano, 0)
+	if vida == 0:
+		_cambiar("derrotada", 0.0)
+		altura = 0.0
+		var abeja: Node2D = get_tree().get_first_node_in_group("abeja_musculosa")
+		if abeja != null and abeja.estado in ["rina_osa", "forcejeo_osa"]:
+			abeja._fin_rivalidad(self, "nadie")
+
+
+func tambalear(segundos: float) -> void:
+	if not multiplayer.is_server() or not activa or estado in ["derrotada", "lago", "llegando"] \
+			or _sin_tambaleo > 0.0:
+		return
+	# Cuenta desde que se recupera, no desde que empieza a tambalearse.
+	_sin_tambaleo = segundos + INMUNE_TAMBALEO
+	if is_instance_valid(_agarrado):
+		_agarrado.aturdimiento = 0
+		_agarrado._aplicar_empujon.rpc(mirando, 0.25)
+		_agarrado = null
+	_golpeados.clear()
+	_cambiar("tambaleando", segundos)
+
+
 # Atrapa al jugador que tenga enfrente y a su alcance; rodar a tiempo lo evita.
 func _atrapar() -> Node2D:
 	for j: Node2D in get_tree().get_nodes_in_group("jugadores"):
@@ -377,7 +504,13 @@ func _atrapar() -> Node2D:
 
 
 func _cambiar(nuevo: String, duracion: float) -> void:
+	# En pleito con la abeja, el ataque que lo provocó no debe pisar el estado:
+	# solo salen de él al terminar el pleito, al marearse o al ser derrotada.
+	if estado == "rivalidad" and nuevo not in ["pausa", "tambaleando", "derrotada", "rivalidad"]:
+		return
 	estado = nuevo
+	if nuevo == "embestida":
+		_lado_desvio = 0
 	_t = duracion
 	_duracion = maxf(duracion, 0.01)
 
@@ -389,6 +522,59 @@ func _avance() -> float:
 
 func _mover(hacia: Vector2, delta: float) -> void:
 	position = _dentro(position.move_toward(hacia, VELOCIDADES[fase - 1] * delta))
+
+
+## Conserva la dirección anunciada; solo rodea el agua, sin perseguir al jugador.
+## Pasos cortos evitan atravesar la orilla o saltarse contactos con un tick largo.
+func _avanzar_embestida(delta: float) -> void:
+	var bosque := get_tree().get_first_node_in_group("bosque")
+	var restante := VELOCIDAD_EMBESTIDA * delta
+	if _dir.is_zero_approx():
+		_cambiar("pausa", 0.8)
+		return
+	while restante > 0.001 and estado == "embestida":
+		var paso := minf(restante, PASO_EMBESTIDA)
+		var rumbo := _dir.normalized()
+		# Al llegar al borde de la arena termina el ataque; no gira hacia atrás.
+		if not ZONA.has_point(position + rumbo * (paso + ANTICIPACION_ORILLA)):
+			_cambiar("pausa", 0.8)
+			return
+		if not _rumbo_seco(bosque, rumbo, paso + ANTICIPACION_ORILLA):
+			rumbo = Vector2.ZERO
+			# Mantener el lado elegido evita alternar izquierda/derecha en la orilla.
+			for giro in range(1, 13):
+				for lado in ([-1, 1] if _lado_desvio == 0 else [_lado_desvio]):
+					var candidato := _dir.normalized().rotated(lado * giro * PI / 12.0)
+					if _rumbo_seco(bosque, candidato, paso + ANTICIPACION_ORILLA):
+						rumbo = candidato
+						_lado_desvio = lado
+						break
+				if rumbo != Vector2.ZERO:
+					break
+		if rumbo == Vector2.ZERO:
+			_cambiar("pausa", 0.8)
+			return
+		position += rumbo * paso
+		if absf(rumbo.x) > 0.1:
+			mirando = int(signf(rumbo.x))
+		_pegar(position, 60.0, 30.0, DANO_EMBESTIDA, 1.6)
+		restante -= paso
+
+
+func _rumbo_seco(bosque: Node, rumbo: Vector2, distancia: float) -> bool:
+	var muestras := ceili(distancia / 4.0)
+	for i in range(1, muestras + 1):
+		var punto := position + rumbo * (distancia * i / muestras)
+		if not ZONA.has_point(punto) or (bosque != null and bosque.dentro_del_lago(punto)):
+			return false
+		# Margen para las pequeñas curvas de la costa y la interpolación de red.
+		if bosque != null:
+			# Crece desde el inicio: también puede salir si arranca pegada a la orilla.
+			var radio := minf(18.0, distancia * i / muestras * 0.5)
+			for margen in [Vector2.RIGHT, Vector2.LEFT, Vector2.UP, Vector2.DOWN]:
+				if bosque.dentro_del_lago(punto + margen * radio):
+					return false
+	return true
 
 
 func _dentro(punto: Vector2) -> Vector2:
@@ -410,12 +596,30 @@ func _presa_cercana() -> Node2D:
 # Golpea a los jugadores dentro de un área (una sola vez por ataque) y, si la
 # olla queda dentro, también la daña.
 func _pegar(centro: Vector2, radio_x: float, radio_y: float, dano: int, fuerza: float, solo_en_suelo := false) -> void:
+	# Si de casualidad alcanza a la abeja musculosa, se arma el pleito entre ellas.
+	var abeja: Node2D = get_tree().get_first_node_in_group("abeja_musculosa")
+	if abeja != null and abeja not in _golpeados and abeja.estado in ["buscando", "golpeando", "forcejeo", "paliza"]:
+		var a := abeja.position - centro
+		if absf(a.x) <= radio_x + abeja.ancho and absf(a.y) <= radio_y:
+			_golpeados.append(abeja)
+			abeja.vida = maxi(abeja.vida - dano, 0)
+			if abeja.vida == 0:
+				abeja._resolver("noqueada")
+			else:
+				abeja.provocar_osa()
+			if estado == "rivalidad":
+				return
 	for j: Node2D in get_tree().get_nodes_in_group("jugadores"):
 		var d := j.position - centro
 		if j in _golpeados or absf(d.x) > radio_x or absf(d.y) > radio_y:
 			continue
 		if solo_en_suelo and j.altura > 12.0:
 			continue
+		if estado in ["aviso_zarpazo", "embestida"] and j.combate.intentar_parada(self):
+			# Aunque sea inmune al tambaleo, esta carrera ya no puede pegarle otra vez.
+			_golpeados.append(j)
+			tambalear(0.8)
+			return
 		_golpeados.append(j)
 		j.recibir_golpe(int(signf(d.x)) if d.x != 0.0 else mirando, dano, fuerza)
 	var estacion := _estacion()
@@ -433,3 +637,26 @@ func _efecto(area: Rect2, color: Color) -> void:
 	efecto.position = area.position
 	efecto.size = area.size
 	efecto.color = color
+
+
+## Tres estrellitas amarillas dando vueltas en óvalo, como en las caricaturas.
+class Estrellas extends Node2D:
+	func _process(_delta: float) -> void:
+		if visible:
+			queue_redraw()
+
+	func _draw() -> void:
+		var t := Time.get_ticks_msec() * 0.006
+		for i in 3:
+			var a := t + TAU * i / 3.0
+			var punto := Vector2(cos(a) * 40.0, sin(a) * 12.0)
+			# Las de atrás se ven más chicas, así parece que giran alrededor.
+			var tamano := 10.0 + 3.5 * sin(a)
+			var puntas := PackedVector2Array()
+			for k in 10:
+				var r := tamano if k % 2 == 0 else tamano * 0.45
+				var ang := -PI / 2 + TAU * k / 10.0 + t * 0.5
+				puntas.append(punto + Vector2(cos(ang), sin(ang)) * r)
+			draw_colored_polygon(puntas, Color("ffe14d"))
+			puntas.append(puntas[0])
+			draw_polyline(puntas, Color("3a2410"), 2.0)

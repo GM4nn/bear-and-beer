@@ -28,73 +28,181 @@ func _process(_delta: float) -> void:
 		return
 	var ids := []
 	for j in get_tree().get_nodes_in_group("jugadores"):
+		# Solo la tarjeta del que juega en esta pantalla.
+		if not j.is_multiplayer_authority():
+			continue
 		ids.append(j.name)
 		if not _tarjetas.has(j.name):
 			_crear_tarjeta(j)
 		var tarjeta: Dictionary = _tarjetas[j.name]
 		tarjeta.vida.value = j.vida
 		tarjeta.borracho.value = j.borrachera
-		tarjeta.detalle.text = "Vida %d/100 · Chelas %d/%d · Botellas vacías %d\nBorrachera %d/100 · %s" % [j.vida, j.cervezas, j.MAX_CERVEZAS, j.botellas, j.borrachera, j.texto_estado()]
-		if j.is_multiplayer_authority() and j.botellas > 0 and j.aviso_bebida().is_empty():
-			tarjeta.detalle.text += " · F/LB: lanzar botella"
-		if j.is_multiplayer_authority() and not j.aviso_bebida().is_empty():
-			tarjeta.detalle.text += "\n" + j.aviso_bebida()
-		elif j.is_multiplayer_authority() and j.cervezas == 0 and j.apoyo_id == 0 and j._torre().encima(j) == null:
-			tarjeta.detalle.text += "\nE/Y: recoger chelas · Q/RB: beber"
-		if j.is_multiplayer_authority() and j.puede_actuar():
-			if j.apoyo_id == 0 and j.altura > 12:
-				tarjeta.detalle.text += " · E/Y sobre un compa: subir a hombros (máx. 3)"
-			elif j.companero_caido() and j.apoyo_id == 0:
-				tarjeta.detalle.text += " · Mantén E/Y para levantar"
-			elif j._pieza_cargada():
-				tarjeta.detalle.text += " · E/Y: soltar pieza"
+		tarjeta.chelas.text = "×%d" % j.cervezas
+		tarjeta.botellas.text = "×%d" % j.botellas
+		# Solo qué tan borracho va; las acciones (rodar, parar, trepar…) ya se ven
+		# en el personaje y las teclas están en Opciones.
+		tarjeta.estado.text = j.NIVELES[j.nivel_borrachera()]
+		var avisos: Array[String] = []
+		if j.combo.paso > 0:
+			avisos.append("COMBO %d/4" % j.combo.paso)
+		if not j.aviso_bebida().is_empty():
+			avisos.append(j.aviso_bebida())
+		tarjeta.detalle.text = "\n".join(avisos)
+		tarjeta.detalle.visible = not avisos.is_empty()
+		# El retrato parpadea en rojo al recibir daño.
+		if j.vida < tarjeta.vida_vista:
+			tarjeta.golpe = 0.25
+		tarjeta.vida_vista = j.vida
+		tarjeta.golpe = maxf(tarjeta.golpe - get_process_delta_time(), 0.0)
+		tarjeta.retrato.modulate = Color(1, 0.45, 0.45) if tarjeta.golpe > 0.0 else Color.WHITE
 	for id in _tarjetas.keys():
 		if id not in ids:
 			_tarjetas[id].panel.queue_free()
 			_tarjetas.erase(id)
-	# Una o dos tarjetas no necesitan tapar todo el paisaje de lado a lado.
-	_fila.size = Vector2(minf(get_viewport_rect().size.x - 32,
-		ids.size() * 320 + maxi(ids.size() - 1, 0) * 8), 0)
-	_fila.position.y = 132 if get_parent().get_node("Jefe").visible else 76
+	_fila.position = Vector2(16, 12)
 
 
+## Tarjeta compacta, al estilo de Castle Crashers: retrato redondo del jugador
+## con su color, nombre y estado, barras delgadas de vida y borrachera, y chelas
+## y botellas en chiquito. Sin placa de fondo para no tapar el bosque.
 func _crear_tarjeta(j: Node) -> void:
-	var panel := PanelContainer.new()
-	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var panel := HBoxContainer.new()
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var estilo := StyleBoxFlat.new()
-	estilo.bg_color = Color(0.04, 0.07, 0.05, 0.92)
-	estilo.border_color = j.COLORES[j.color_indice]
-	estilo.set_border_width_all(2)
-	estilo.content_margin_left = 10
-	estilo.content_margin_right = 10
-	estilo.content_margin_top = 6
-	estilo.content_margin_bottom = 6
-	panel.add_theme_stylebox_override("panel", estilo)
+	panel.add_theme_constant_override("separation", 8)
 	_fila.add_child(panel)
+	var medallon := Medallon.new()
+	medallon.color = j.COLORES[j.color_indice % j.COLORES.size()]
+	medallon.custom_minimum_size = Vector2(64, 64)
+	medallon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_child(medallon)
+	var retrato := TextureRect.new()
+	var cara := AtlasTexture.new()
+	cara.atlas = RETRATO
+	cara.region = Rect2(68, 24, 52, 52)
+	retrato.texture = cara
+	retrato.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	retrato.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	retrato.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	retrato.offset_left = 7
+	retrato.offset_top = 7
+	retrato.offset_right = -7
+	retrato.offset_bottom = 7
+	retrato.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# La playera se pinta del color del jugador, igual que su personaje.
+	var material := ShaderMaterial.new()
+	material.shader = COLOR_JUGADOR
+	material.set_shader_parameter("color_jugador", medallon.color)
+	retrato.material = material
+	medallon.add_child(retrato)
+	# El aro va encima del retrato, que queda recortado dentro del círculo.
+	var aro := Aro.new()
+	aro.color = medallon.color
+	aro.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	aro.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	medallon.add_child(aro)
 	var columna := VBoxContainer.new()
 	columna.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	columna.add_theme_constant_override("separation", 3)
+	columna.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	panel.add_child(columna)
-	var titulo := _texto(j.nombre + (" (tú)" if j.is_multiplayer_authority() else ""), 15)
-	columna.add_child(titulo)
-	var vida := _barra(Color("72c779"))
-	var borracho := _barra(Color("e8b743"))
+	var cabecera := _renglon(columna)
+	var nombre := _texto(j.nombre, 15)
+	nombre.add_theme_font_override("font", TemaUI.fuente("bold"))
+	cabecera.add_child(nombre)
+	var estado := _texto("", 12)
+	estado.add_theme_color_override("font_color", Color("ffd36b"))
+	estado.size_flags_vertical = Control.SIZE_SHRINK_END
+	cabecera.add_child(estado)
+	var vida := _barra(Color("e04a3c"), 150, 10)
 	columna.add_child(vida)
+	var borracho := _barra(Color("f2a93b"), 120, 6)
 	columna.add_child(borracho)
-	var detalle := _texto("", 13)
-	detalle.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	var inventario := _renglon(columna)
+	inventario.add_child(_icono(ICONO_CHELA))
+	var chelas := _texto("", 14)
+	inventario.add_child(chelas)
+	inventario.add_child(_icono(ICONO_BOTELLA))
+	var botellas := _texto("", 14)
+	inventario.add_child(botellas)
+	var detalle := _texto("", 12)
+	detalle.add_theme_color_override("font_color", Color("ffd36b"))
 	columna.add_child(detalle)
-	_tarjetas[j.name] = {"panel": panel, "vida": vida, "borracho": borracho, "detalle": detalle}
+	_tarjetas[j.name] = {"panel": panel, "vida": vida, "borracho": borracho, "detalle": detalle,
+		"chelas": chelas, "botellas": botellas, "estado": estado, "retrato": retrato,
+		"vida_vista": j.vida, "golpe": 0.0}
 
 
-func _barra(color: Color) -> ProgressBar:
+const ICONO_CHELA := preload("res://arte/ui/icono_chela.png")
+const ICONO_BOTELLA := preload("res://arte/ui/icono_botella.png")
+const RETRATO := preload("res://arte/jugador/quieto/0.png")
+const COLOR_JUGADOR := preload("res://arte/jugador/color_jugador.gdshader")
+const TINTA_BORDE := Color("1d120c")
+
+
+## Círculo de fondo del retrato; recorta a sus hijos con su propia forma.
+class Medallon extends Control:
+	var color := Color.WHITE
+
+	func _ready() -> void:
+		clip_children = CanvasItem.CLIP_CHILDREN_AND_DRAW
+
+	func _draw() -> void:
+		var centro := size * 0.5
+		var radio := minf(size.x, size.y) * 0.5
+		draw_circle(centro, radio, Color("fff3d6"))
+		draw_circle(centro + Vector2(0, radio * 0.3), radio * 0.8, color.lightened(0.55))
+
+
+## Aro del color del jugador con contorno oscuro, encima del retrato.
+class Aro extends Control:
+	var color := Color.WHITE
+
+	func _draw() -> void:
+		var centro := size * 0.5
+		var radio := minf(size.x, size.y) * 0.5
+		draw_arc(centro, radio - 4.5, 0, TAU, 48, color.darkened(0.1), 5.0, true)
+		draw_arc(centro, radio - 1, 0, TAU, 48, Color("1d120c"), 2.5, true)
+		draw_arc(centro, radio - 8, 0, TAU, 48, Color("1d120c"), 2.0, true)
+
+
+func _renglon(padre: Control) -> HBoxContainer:
+	var renglon := HBoxContainer.new()
+	renglon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	renglon.add_theme_constant_override("separation", 6)
+	padre.add_child(renglon)
+	return renglon
+
+
+func _icono(textura: Texture2D) -> TextureRect:
+	var icono := TextureRect.new()
+	icono.texture = textura
+	icono.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icono.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icono.custom_minimum_size = Vector2(26, 26)
+	icono.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return icono
+
+
+## Barra delgada con borde oscuro (la canaleta también oscura).
+func _barra(color: Color, ancho: float, alto: float) -> ProgressBar:
 	var barra := ProgressBar.new()
-	barra.custom_minimum_size.y = 8
+	barra.custom_minimum_size = Vector2(ancho, alto)
+	barra.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	barra.show_percentage = false
 	barra.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var estilo := StyleBoxFlat.new()
-	estilo.bg_color = color
-	barra.add_theme_stylebox_override("fill", estilo)
+	var fondo := StyleBoxFlat.new()
+	fondo.bg_color = Color(0.11, 0.07, 0.05, 0.85)
+	fondo.border_color = TINTA_BORDE
+	fondo.set_border_width_all(2)
+	fondo.set_corner_radius_all(2)
+	barra.add_theme_stylebox_override("background", fondo)
+	var lleno := StyleBoxFlat.new()
+	lleno.bg_color = color
+	lleno.border_color = TINTA_BORDE
+	lleno.set_border_width_all(2)
+	lleno.border_width_right = 0
+	lleno.set_corner_radius_all(2)
+	barra.add_theme_stylebox_override("fill", lleno)
 	return barra
 
 
@@ -119,20 +227,27 @@ func limpiar() -> void:
 
 func mostrar_resultados(victoria: bool, filas: Array) -> void:
 	_resultado = ColorRect.new()
-	_resultado.color = Color(0.025, 0.045, 0.03, 0.97)
+	_resultado.color = Color(0.06, 0.03, 0.02, 0.72)
 	_resultado.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(_resultado)
 	var margen := MarginContainer.new()
 	margen.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	for lado in ["left", "right"]:
-		margen.add_theme_constant_override("margin_" + lado, 40)
+		margen.add_theme_constant_override("margin_" + lado, 24)
 	for lado in ["top", "bottom"]:
-		margen.add_theme_constant_override("margin_" + lado, 28)
+		margen.add_theme_constant_override("margin_" + lado, 16)
 	_resultado.add_child(margen)
+	# Letrero grande de madera con papel picado (tema cantina).
+	var letrero := PanelContainer.new()
+	letrero.add_theme_stylebox_override("panel", TemaUI.panel_letrero())
+	margen.add_child(letrero)
 	var columna := VBoxContainer.new()
 	columna.add_theme_constant_override("separation", 14)
-	margen.add_child(columna)
-	columna.add_child(_texto("¡RECUPERARON LAS CHELAS!" if victoria else "SE NOS CAYÓ TODO EL EQUIPO", 30))
+	letrero.add_child(columna)
+	var encabezado_final := _texto("¡RECUPERARON LAS CHELAS!" if victoria else "SE NOS CAYÓ TODO EL EQUIPO", 32)
+	encabezado_final.add_theme_font_override("font", TemaUI.fuente("bold"))
+	encabezado_final.add_theme_color_override("font_color", Color("ffd36b"))
+	columna.add_child(encabezado_final)
 	columna.add_child(_texto("Mamá Osa cayó. Ahora sí: a repartir culpas." if victoria else "Nadie quedó de pie para levantar a los demás. Vuelvan a la sala para reintentar.", 16))
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL

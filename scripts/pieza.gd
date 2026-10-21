@@ -33,7 +33,7 @@ func _process(delta: float) -> void:
 	if quien:
 		# La lleva en las manos, por delante del cuerpo.
 		position = quien.position + Vector2(0, 1)
-		visual.position = Vector2(quien.mirando * 26.0, -26.0 - quien.altura)
+		visual.position = Vector2(quien.mirando * 34.0, -46.0 - quien.altura)
 	else:
 		visual.position = Vector2.ZERO
 	_sprite.position.y = 0 if quien or entregada else sin(_tiempo_visual * 2.5) * 1.5

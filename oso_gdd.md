@@ -86,14 +86,25 @@ Cinemática → Tutorial → Mamá Osa → El Abuelo → El Tío → La Prima �
 |---|---|---|
 | Moverse | W A S D | Stick izq. |
 | Saltar | Espacio | A |
-| Golpear | Clic izq. / J | X |
-| Esquivar / rodar | Shift / K | B |
+| Puño derecho | H | X |
+| Puño izquierdo | J | RT |
+| Cabezazo | K | L3 (pulsar stick izquierdo) |
+| Patada | L | Cruceta abajo |
+| Parada a tiempo | F | LT |
+| Esquivar / rodar | Shift | B |
 | Agarrar / lanzar / colocar objeto | E | Y |
 | Tomar cerveza | Q | RB |
-| Lanzar botella vacía | F | LB |
+| Apuntar / lanzar botella vacía | Mantener R / soltar R | Mantener LB / soltar LB |
+| Lanzar al compa que cargas en hombros | R (siendo la base de una torre) | LB (siendo la base de una torre) |
+| Lanzar al compa que tienes enfrente | — (pendiente en teclado) | R3 |
 | Levantar compañero caído | Mantener E | Mantener Y |
 | Subir a hombros | Saltar y pulsar E sobre un compa | A y luego Y sobre un compa |
 | Bajar de hombros / saltar desde arriba | E / Espacio | Y / A |
+| Pausar / resumir | Esc | — |
+
+**Pausa (implementada):** Esc detiene el mundo y abre **Resumir, Opciones, Terminar partida y Volver al lobby**. Se navega con flechas y Enter; Esc en Opciones vuelve a la pausa, y Esc en la pausa reanuda. Opciones permite cambiar volumen y pantalla completa sin mover el mundo. En cooperativo cualquier jugador puede pausar o reanudar para todos. El anfitrión puede devolver al grupo al lobby y comenzar una ronda nueva conservando la conexión. Terminar partida lleva al menú principal: el anfitrión cierra la sesión para todos; un cliente solo abandona su propia sesión. Si quien pausó se desconecta, se reanuda automáticamente. Se congelan física, animaciones y temporizadores de combate; se cancela el apuntado de botella sin gastarla y no se acumulan pulsaciones dentro del menú.
+
+Movimiento y combate completos con teclado: mano izquierda en WASD y mano derecha en **H/J/K/L**, una tecla por golpe, con **F** para parar. Se eligió esta fila porque cada dedo queda sobre su golpe; la distribución anterior (J/K/U/I) obligaba a mover la mano. El combo se introduce con **H → J → K → L**. El ratón no tiene acciones de combate; queda disponible para la interfaz y futuros puzles. Se conserva la compatibilidad con mando.
 
 **Reglas:**
 - **100 puntos de vida máxima por jugador**, iguales para todos y sin configuración en la sala. El anfitrión calcula y sincroniza automáticamente el daño y las muertes.
@@ -101,16 +112,40 @@ Cinemática → Tutorial → Mamá Osa → El Abuelo → El Tío → La Prima �
 - Al perder la vida quedas **caído**; un compañero te levanta en unos segundos.
 - **Fuego amigo activado** (los golpes y objetos sí les pegan a tus compañeros).
 
+**Combo individual y golpes de cómic (implementados):**
+- Secuencia: **puño derecho → puño izquierdo → cabezazo → patada crítica**. Los tres primeros contactos preparan el remate; deben acertar a la misma Mamá Osa, con menos de **0,95 segundos entre contactos**. Un golpe al aire, orden incorrecto, recibir daño, quedar incapacitado o terminar la ronda rompe el combo. Repetir el puño derecho comienza una secuencia nueva.
+- Daños estando sobrio: **10 / 10 / 14 / 16**; la patada que completa el combo hace **40** (×2,5) y tambalea a la osa durante **0,9 segundos**. Después de cualquier tambaleo (combo, compazo o parada) la osa no puede volver a tambalearse durante **3 segundos**; la parada sigue evitando el daño en ese rato. Se conserva el aumento de daño por borrachera. No se aplica el crítico a compañeros, oseznos ni objetos.
+- El combo individual requiere estar fuera de una torre y no cargar piezas para los ataques nuevos. E/Y permite bajar o soltar; las torres conservan sus puños y su crítico coordinado.
+- Cada contacto real muestra un estallido breve de **tinta negra y destello blanco**, con borde irregular y trazos radiales como la referencia del usuario, **sin palabras ni letras**. Dura 0,24 s; el crítico usa el mismo efecto más grande durante 0,34 s. Fallar no muestra un impacto. El HUD indica el siguiente ataque y todos los clientes reciben los efectos confirmados por el servidor.
+- Animaciones propias del segundo brazo, cabezazo y patada; el daño se aplica cuando el miembro alcanza el cuadro de contacto, una sola vez por ataque.
+- Espera corta entre golpes: entre el inicio de un ataque y el siguiente pasan al menos **0,15 segundos**; machacar más rápido no pega más rápido. La preparación dura 0,08 / 0,10 / 0,14 / 0,16 segundos. Se guardan hasta tres pulsaciones anticipadas en orden para encadenar la secuencia rápida sin perder entradas; recibir daño, rodar, montar, parar o terminar la ronda cancela lo pendiente. Mantener un botón no repite ataques. Los bots conservan su ritmo de ayuda.
+
+**Compazo y parada a tiempo (implementados):**
+- **Compazo:** siendo la base de una torre, R/LB lanza al de más arriba; con mando, R3 también lanza al compañero cercano que tienes delante (en teclado esto aún no tiene tecla). El compañero vuela girando en arco; al chocar con Mamá Osa le hace **40 de daño**, recibe **15 de daño** y rebota. La osa se tambalea durante **0,75 segundos**. Un vuelo solo cuenta una vez; si falla, aterriza sin daño de choque. Espera entre lanzamientos: **1,4 segundos**.
+- **Parada:** F/LT sube la guardia (antebrazos frente a la cara, rodillas dobladas y un empujón para desviar). La ventana útil dura **0,22 segundos**, aunque la animación se ve completa (0,35 s) salvo que te peguen. Si un zarpazo o una embestida te alcanza en esa ventana y miras hacia la osa, evitas el daño y la tambaleas durante **0,8 segundos**, con destello, aviso **¡PARADA!** y un arco de guardia. Espera entre intentos: **0,9 segundos**; mantener el botón no repite la parada. Una parada cancela el ataque completo, así que también protege a quien esté a tu lado en ese momento.
+- Se hacen desde el suelo y sin cargar piezas. La parada no detiene agarres, rugidos ni golpes al suelo; estos últimos siguen requiriendo saltar. El daño y las ventanas se validan en el servidor.
+
+**Mamá Osa tambaleando (mareada):**
+- La tambalean tres cosas: la patada crítica del combo (0,9 s), el compazo (0,75 s) y la parada (0,8 s). Mientras dura no ataca y suelta a quien tuviera agarrado.
+- Se ve **mareada**: animación propia en cada una de sus 3 fases (se bambolea, le da vueltas la cabeza, ojos perdidos) y **tres estrellitas** girando sobre su cabeza, con el aviso **¡TAMBALEANDO!**.
+- Después de recuperarse queda **3 segundos sin poder volver a tambalearse**, para que no la puedan dejar trabada; en ese rato la parada sigue evitando el daño, pero ya no la marea. En esta excepción la embestida continúa: quien la paró queda protegido frente a todos los contactos restantes de esa misma carrera, aunque los demás todavía pueden recibirla.
+
 **Torre de compas (implementada):**
 - Máximo **3 jugadores en total**, contando al que está en el suelo. Sin ajustes del anfitrión.
 - Saltar y pulsar E/Y encima de un compañero. Si ya lleva a alguien, se trepa al último puesto libre de esa torre.
 - La base camina y salta con el grupo; los pasajeros pueden mirar a ambos lados, pegar y lanzar botellas desde su altura.
-- Posturas propias: la base sostiene con los brazos elevados, los pasajeros van sentados y el intermedio también carga al de arriba. Hay ciclos de reposo, caminar cargando y puñetazos desde cada puesto.
+- Posturas propias, todos del mismo tamaño: la base sostiene con los brazos elevados las piernas del de en medio; el de en medio va sentado en sus hombros y sostiene con las dos manos al de arriba; el de arriba va sentado. Hay ciclos de reposo, caminar cargando y golpes desde cada puesto: la base patea al frente, el de en medio suelta una mano para pegar con la otra sin dejar de sostener, y el de arriba lanza puñetazos sentado.
+- Los nuevos golpes del combo (puño izquierdo, cabezazo, patada) no se usan en torre; ahí solo cuenta el puño derecho (H/X) para el crítico de torre.
 - **Crítico de torre:** todos los integrantes de una torre de 2 o 3 deben acertar sus puños a Mamá Osa hacia el mismo lado dentro de **0,18 segundos**. El último contacto completa **×2 del daño combinado** (40 con dos sobrios, 60 con tres), con aviso visual para todos. Fallar, golpear tarde o cambiar integrantes rompe la coordinación; no aumenta el daño a compañeros, olla ni oseznos. Lo valida el anfitrión sin opciones de configuración.
 - E/Y baja al pasajero; Espacio/A permite saltar desde sus hombros. Si sale el de en medio, caen los de arriba. La base también puede pulsar E/Y para soltarlos.
 - Golpes, agarres, rodada, incapacitación y desconexión del apoyo hacen caer a los que sostiene. No se puede formar una torre cargando piezas.
 - E/Y en el suelo conserva la interacción con objetos y mantenerlo permite levantar a un compañero caído cuando no estás en una torre.
 - Los golpes fuertes de los jefes causan **ragdoll** / salir volando.
+
+**Bots de ayuda (solo para probar, se apagan con `bot_de_ayuda` en Main):**
+- Al crear partida se unen 2 bots (configurable con `cantidad_bots`).
+- Sin Mamá Osa, ayudan con la misión: van por la miel, la olla y la leña y las llevan a la fogata.
+- Cuando aparece Mamá Osa, se montan en los hombros del anfitrión y acompañan cada golpe suyo para hacer el crítico de torre. Si traían una pieza, la sueltan antes de subir. Cuando ella ya no está, se bajan solos.
 
 ### La cerveza: cura y Medidor de Borrachera 🍺
 Tomar cerveza **te cura**, pero sube tu medidor de borrachera. Tomar tarda un par de segundos y te deja vulnerable.
@@ -130,17 +165,17 @@ Tomar cerveza **te cura**, pero sube tu medidor de borrachera. Tomar tarda un pa
 - **Recoger cerveza:** E/Y junto a una botella del mapa; máximo 6 en el inventario (un six-pack). Hay seis botellas juntas cerca del campamento para probar las mecánicas desde el inicio. Las botellas vuelven a aparecer tras 25 segundos para permitir intentos largos.
 - **Beber:** Q/RB, con las manos libres y en el suelo. Tarda 2 segundos, inmoviliza y cura 35 puntos, hasta un máximo de 100. La botella se consume al terminar; recibir daño interrumpe la bebida sin curar ni gastar la botella, con un aviso en el HUD.
 - **Borrachera:** cada bebida terminada añade 30 puntos. Permanece 12 segundos tras la última bebida y después baja 0.5 por segundo cuando no se bebe. Los niveles empiezan en 0, 25, 50 y 75 puntos; el daño es 10, 15, 22 y 30 respectivamente. Bebiendo seguido desde sobrio: primera chela alegre, segunda pedo, tercera hasta atrás y cuarta vómito. El HUD muestra el valor numérico del medidor y avisa cuando faltan chelas.
-- **Torpeza:** tambaleo creciente; en nivel 2 hay un 20% de probabilidad de golpear hacia el lado equivocado. En nivel 3 se reduce la velocidad y el golpe normal se convierte en **"Ven pa'cá"**, con más alcance y empujón, pero una espera de 0.7 segundos.
+- **Torpeza:** tambaleo creciente; en nivel 2 hay un 20% de probabilidad de golpear hacia el lado equivocado. En nivel 3 se reduce la velocidad y el golpe normal se convierte en **"Ven pa'cá"**, con más alcance y empujón. La espera mínima de 0,15 segundos entre golpes es la misma en todos los niveles.
 - **Sueño y vómito:** mantenerse 6 segundos en nivel 3, en el suelo y sin beber, rodar ni estar aturdido, puede dejarte dormido 2.5 segundos. Llegar a 100 puntos provoca vómito durante 2.5 segundos y baja el medidor a 70. El charco dura 12 segundos y hace resbalar a quien lo pisa; se puede saltar o esquivar.
 - **Caído y reanimación:** a 0 de vida sueltas la pieza y quedas inmóvil. Un compañero con las manos libres mantiene E/Y a menos de 60 píxeles durante 3 segundos; más compañeros aceleran la ayuda. Si nadie ayuda, el progreso se reinicia. Te levantas con 40 de vida y 1.5 segundos de protección.
-- **Rodar:** Shift/K/B durante 0.32 segundos; evita daño en los primeros 0.2 segundos y tiene 1.1 segundos de espera. Suelta la pieza que estés cargando.
+- **Rodar:** Shift/B durante 0.32 segundos; evita daño en los primeros 0.2 segundos y tiene 1.1 segundos de espera. Suelta la pieza que estés cargando.
 - **Fin del intento:** si todos quedan caídos durante 2 segundos, aparece la derrota. En solitario sucede al caer. El anfitrión puede volver a todo el equipo a la sala para empezar una ronda limpia, sin reconectar.
 - **HUD y resultados:** barras de vida y borrachera, inventario y estado de cada jugador. Al vencer a Mamá Osa se comparte la pantalla de humillación con fuego amigo recibido, distancia máxima de vuelo en píxeles, bebidas terminadas, amigos alcanzados al vomitar, siestas en combate, daño efectivo al jefe y rescates. Los empates comparten premio; valores en cero no generan ganadores.
 - El anfitrión calcula automáticamente la vida, inventario, estados, daño, reanimación y estadísticas. **No hay ajustes de vida en la sala.**
 
 **Objetos comunes:**
 - Cerveza (cura y sube el medidor)
-- Botella vacía (se lanza): cada chela que te tomas te deja una. Vuela recta unos 380 píxeles, quita 12 de vida a enemigos y compañeros, y entre más borracho estás, peor puntería.
+- Botella vacía (se lanza): cada chela que te tomas te deja una. Mantener R/LB carga la fuerza durante 1,2 s y muestra la parábola y el punto de caída; soltar lanza. Desde el suelo alcanza aproximadamente 160–570 píxeles según la carga, y desde los hombros llega más lejos. Puede pasar por encima de un objetivo; causa 12 de daño al impactar y conserva el fuego amigo. Recibir daño o quedar incapacitado cancela la carga. La guía muestra el tiro ideal; la borrachera sigue empeorando la puntería real.
 - Palo (golpe con más alcance)
 - Sartén (aturde un instante)
 - Silla plegable (daño alto, se rompe)
@@ -156,7 +191,7 @@ Regla general: **a todos los jefes hay que pegarles hasta matarlos**, pero cada 
 - **Dinámica: PROTEGER.** Hay que defender la olla de papilla y a los oseznos. Si alguien lastima a un osezno o se rompe la olla, Mamá Osa se enfurece y sube de fase de golpe.
 - **Agarre (en las 3 fases):** se le echa encima al jugador más cercano, lo levanta con las patas y lo avienta bien lejos. Se evita rodando a tiempo, y un compañero puede soltarlo de un golpe antes de que lo aviente.
 - **Fase 1:** zarpazos y empujones, revisa a sus crías.
-- **Fase 2:** embiste en línea recta, ruge para aturdir.
+- **Fase 2:** anuncia una dirección y embiste; al encontrar agua se desvía por la orilla manteniendo el mismo lado de desvío. No vuelve a apuntar al jugador durante la carrera. Termina al acercarse al borde de la arena. Ruge para aturdir.
 - **Fase 3:** salta al lago y sale salpicando, golpe al piso que hace volar a todos.
 - **Lo que enseña:** pelear en equipo y cuidar un objetivo.
 
@@ -213,6 +248,21 @@ Antes de cada jefe hay **una sola misión**: recolectar las piezas del artilugio
 - Al juntar todo, se **construye en una estación** del mapa (mantener botón entre varios jugadores para hacerlo más rápido). Si se suelta el botón, el avance se baja.
 - **Zona 1:** las abejas atacan a quien se acerque a un panal; molestan con menos fuerza durante la pelea y se calman al vencer al jefe. Con la papilla lista hay **30 segundos para dársela a los oseznos** (otra barra, manteniendo el botón junto a ellos). Si se logra, lloran por su mamá y empieza la pelea; si no, Mamá Osa derriba a todos y termina el intento. En este prototipo se reintenta la zona desde la sala.
 
+### Abejas y forcejeo — mecánica propia del Lago
+
+El combate básico queda cerrado. Las mecánicas adicionales dependen de la zona y de su jefe.
+
+- Cada panal tiene **5 abejas individuales**. Un impacto de puño, cabezazo, patada o botella mata una; cae girando y desaparece. Cada baja reaparece a los **8 segundos**. Un enjambre vacío deja de picar y de recibir impactos hasta que se repone.
+- Las bajas cuentan **entre todos los jugadores y panales**. Cada grupo de **3 bajas** sortea un **50 % de probabilidad** de fusión. Tres siluetas de abeja giran, convergen y forman una **abeja musculosa**, algo mayor que el compa, tras **1,8 segundos**.
+- Solo puede haber **una musculosa activa**. Los grupos de tres bajas durante ese encuentro se consumen sin acumular futuras fusiones. La musculosa no cuenta como otra baja de abeja pequeña.
+- Conserva el diseño aprobado: cuerpo de abeja amarillo, ojos negros grandes, alas azules y brazos musculosos. Se acerca **caminando**, prepara **dos puñetazos de 5 de daño** (0,7 s cada uno, contacto a los 0,32 s), y después busca al rival para el empuje. Los puños se pueden evitar saltando, alejándose, rodando o haciendo parada con F; un fallo también cuenta entre los dos intentos.
+- Después de esos dos puños, busca a un jugador cercano en el suelo y lo reta al entrar en contacto: ambos se ven de perfil, con piernas abiertas, cuerpo inclinado hacia delante y las dos manos unidas haciendo fuerza. Al compa se le ven brazos musculosos solo durante el duelo. Suelta lo que lleva y desmonta su torre si la tenía; no agarra jugadores caídos, saltando, nadando o incapacitados.
+- **Pulsar E repetidamente** (Y en mando) empuja la barra hacia la victoria. Mantener el botón no repite pulsaciones. La barra empieza al 50 %; la abeja resta 8,5 puntos porcentuales por segundo tras 0,35 s de preparación, y cada pulsación suma 6,5. Hay un máximo de **8 segundos** para llevarla al 100 %; al llegar a cero o agotar el tiempo gana la abeja.
+- Ganar manda volando a la musculosa y la elimina. Perder causa **15 de daño** y un empujón; la abeja se marcha. El compa recupera sus controles en ambos casos y obtiene **1,2 segundos de protección** para salir del encuentro.
+- Durante el forcejeo se pausan los otros estados del compa, sus movimientos y sus acciones; recibe protección frente a golpes externos. E no recoge objetos, no monta hombros y no levanta compañeros en ese momento. Los demás ven quién está forcejeando y la misma barra.
+- Si no encuentra rival durante 15 s, la musculosa se retira. Desconexión, caída del contendiente y fin de ronda cancelan el duelo. Una ronda nueva reinicia contador y encuentro.
+- El anfitrión decide bajas, azar y resultado; el cliente solo envía pulsaciones propias, validadas por identidad, encuentro e intervalo mínimo. No hay opciones de configuración para el anfitrión.
+
 ---
 
 ## 6. Multijugador
@@ -268,6 +318,10 @@ Antes de cada jefe hay **una sola misión**: recolectar las piezas del artilugio
 ---
 
 ## 10. Interfaz (UI)
+
+**Fondo del menú:** se conserva el campamento al atardecer de `arte/ui/menu/fondo.png`, con los tres compas en sus posiciones originales y el estilo de cantina de Claude. El fondo ya no intercambia recortes aleatorios de paisajes: un shader mueve suavemente las nubes centrales, las vetas del reflejo en el lago y las llamas, manteniendo la cuadrícula del pixel art, la orilla y la base de la fogata. Unas pocas brasas suben y desaparecen. El compa del tronco tiene una secuencia real de bajar la botella, descansar y volver a beber, con tiempos de espera. Las animaciones son locales y su reloj se detiene cuando el fondo está oculto durante la partida.
+
+El compa del sleeping permanece completamente quieto; solo sus Z suben y se desvanecen. El compa de la silla también queda quieto, sin respiración ni cabeceo: su animación es un hilito de baba que crece desde la boca, forma una gota y cae. Se conservan ambos sprites originales.
 
 - Menú principal: Jugar / Unirse a amigo / Opciones / Salir.
 - Selección de zona (las ya desbloqueadas).

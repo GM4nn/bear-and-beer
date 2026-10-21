@@ -13,6 +13,20 @@ var jefe: Node2D
 var _auto := false
 var _regresando_sala := false
 var _pids_bots: Array[int] = []
+var _fondo_menu: TextureRect
+var _panel_mision: PanelContainer
+var _dato_mision: Label
+var _flecha: Control
+## Texto de la misión sin números: si cambia, la misión se anuncia otra vez.
+var _clave_mision := ""
+var _anuncio: Tween
+var _sin_numeros := RegEx.create_from_string("[0-9]+")
+const DURACION_ANUNCIO := 5.0
+## Letrero de madera -> pantalla que enmarca.
+var _letreros: Dictionary = {}
+const MARGEN_LETRERO := Vector2(70, 80)
+var _pausado_por := 0
+var pausa: CanvasLayer
 
 ## Para probar solo: al crear partida se unen bots. El modo de torre acompaña
 ## al anfitrión; al desactivar probar_torre_con_bots vuelven a hacer la misión.
@@ -35,7 +49,17 @@ var _pids_bots: Array[int] = []
 
 
 func _ready() -> void:
+	process_mode = Node.PROCESS_MODE_ALWAYS
+	_decorar_ui()
 	_usar_bosque($Juego)
+	pausa = preload("res://scripts/menu_pausa.gd").new()
+	pausa.name = "Pausa"
+	add_child(pausa)
+	pausa.resumir.connect(_pedir_pausa.bind(false))
+	pausa.terminar.connect(_volver_al_menu.bind(""))
+	pausa.volver_lobby.connect(_preparar_sala.bind(true))
+	pausa.volumen_cambiado.connect(_volumen)
+	pausa.pantalla_cambiada.connect(_pantalla_completa)
 	hud.volver_sala.connect(_preparar_sala)
 	hud.salir.connect(_volver_al_menu.bind(""))
 
@@ -75,25 +99,296 @@ func _ready() -> void:
 			_unirse()
 
 
-func _unhandled_input(event: InputEvent) -> void:
-	if juego.visible and event.is_action_pressed("ui_cancel"):
-		_volver_al_menu("")
+func _input(event: InputEvent) -> void:
+	if not event.is_action_pressed("ui_cancel"):
+		return
+	if juego.visible and not juego.get_node("Partida").finalizada:
+		get_viewport().set_input_as_handled()
+		if pausa.visible and pausa.opciones.visible:
+			pausa.volver()
+		else:
+			_pedir_pausa(not get_tree().paused)
+	elif $UI/Opciones.visible:
+		get_viewport().set_input_as_handled()
+		_mostrar("menu")
+
+
+func _pedir_pausa(activa: bool) -> void:
+	if multiplayer.is_server():
+		_cambiar_pausa(activa, multiplayer.get_unique_id())
+	else:
+		_solicitar_pausa.rpc_id(1, activa)
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _solicitar_pausa(activa: bool) -> void:
+	if multiplayer.is_server():
+		_cambiar_pausa(activa, multiplayer.get_remote_sender_id())
+
+
+func _cambiar_pausa(activa: bool, id: int) -> void:
+	if not Red.jugadores.has(id) or not juego.visible or _regresando_sala \
+			or juego.get_node("Partida").finalizada or activa == get_tree().paused:
+		return
+	_aplicar_pausa.rpc(id if activa else 0)
+
+
+@rpc("authority", "call_local", "reliable")
+func _aplicar_pausa(id: int) -> void:
+	_pausado_por = id
+	get_tree().paused = id != 0
+	# No guardar pulsaciones de combate realizadas dentro del menú.
+	for accion in InputMap.get_actions():
+		if not accion.begins_with("ui_"):
+			Input.action_release(accion)
+	if id != 0:
+		for jugador in jugadores.get_children():
+			jugador.cancelar_entrada_pausa()
+		pausa.mision.text = mision.text
+		pausa.abrir(multiplayer.is_server(), str(Red.jugadores.get(id, {}).get("nombre", "un compa")))
+	else:
+		pausa.cerrar()
 
 
 func _process(_delta: float) -> void:
+	_acomodar_letreros()
 	barra_jefe.visible = juego.visible and jefe.activa
 	if barra_jefe.visible:
 		$UI/Jefe/Texto.text = jefe.nombre_y_fase()
 		$UI/Jefe/Barra.size.x = $UI/Jefe/Fondo.size.x * jefe.vida / jefe.vida_max
+	_dato_mision.visible = juego.visible
+	_flecha.activa = false
 	if juego.visible:
 		mision.text = jefe.texto() if jefe.activa else estacion.texto_mision()
+		var clave := _sin_numeros.sub(mision.text, "", true)
+		if clave != _clave_mision:
+			_clave_mision = clave
+			_anunciar_mision()
+		_dato_mision.text = _dato_urgente()
+		var destino: Variant = _objetivo()
+		if destino != null:
+			_flecha.objetivo = destino
+			_flecha.activa = true
+
+
+## La misión aparece al centro unos segundos y se desvanece.
+func _anunciar_mision() -> void:
+	if _anuncio:
+		_anuncio.kill()
+	_panel_mision.visible = true
+	_panel_mision.modulate.a = 0.0
+	_panel_mision.offset_top = 80
+	_anuncio = create_tween()
+	_anuncio.tween_property(_panel_mision, "modulate:a", 1.0, 0.3)
+	_anuncio.parallel().tween_property(_panel_mision, "offset_top", 96.0, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	_anuncio.tween_interval(DURACION_ANUNCIO)
+	_anuncio.tween_property(_panel_mision, "modulate:a", 0.0, 0.6)
+	_anuncio.tween_callback(_panel_mision.hide)
+
+
+func _dato_urgente() -> String:
+	if jefe.activa:
+		var olla: int = estacion.vida_olla
+		return "" if jefe.estado == "derrotada" else ("Olla: %d" % olla if olla > 0 else "Olla rota")
+	if estacion.terminada and not estacion.alimentados:
+		return "Mamá Osa llega en %d s" % ceili(estacion.tiempo)
+	return ""
+
+
+## A dónde tiene que ir este jugador ahora (o null si no hace falta flecha).
+func _objetivo() -> Variant:
+	if juego.get_node("Partida").finalizada or estacion.alimentados and not jefe.activa:
+		return null
+	if jefe.activa:
+		return null if jefe.estado == "derrotada" else jefe.global_position
+	if estacion.terminada:
+		return estacion.lugar_oseznos()
+	if estacion.completa():
+		return estacion.global_position
+	var yo := multiplayer.get_unique_id()
+	var mio: Node2D = jugadores.get_node_or_null(str(yo))
+	if mio == null:
+		return null
+	var cercana: Node2D = null
+	for pieza: Node2D in get_tree().get_nodes_in_group("piezas"):
+		if pieza.entregada:
+			continue
+		# Si ya la carga, toca llevarla a la fogata del lago.
+		if pieza.portador == yo:
+			return estacion.global_position
+		if pieza.portador == 0 and (cercana == null or
+				mio.position.distance_to(pieza.global_position) < mio.position.distance_to(cercana.global_position)):
+			cercana = pieza
+	return cercana.global_position if cercana else null
+
+
+## Estilo cantina (scripts/tema_ui.gd): fondo del menú, logo, letreros de madera
+## detrás de cada pantalla y marco de madera para la barra de Mamá Osa.
+func _decorar_ui() -> void:
+	# UI es una CanvasLayer: el tema se pone en cada pantalla (los hijos lo heredan).
+	var ui: CanvasLayer = $UI
+	for hijo in ui.get_children():
+		if hijo is Control:
+			hijo.theme = TemaUI.tema()
+	_fondo_menu = preload("res://scripts/fondo_menu.gd").new()
+	_fondo_menu.name = "FondoMenu"
+	_fondo_menu.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_fondo_menu.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	_fondo_menu.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_fondo_menu.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ui.add_child(_fondo_menu)
+	ui.move_child(_fondo_menu, 0)
+	# Logo en lugar del título de texto del menú principal.
+	var titulo: Label = $UI/Menu/Titulo
+	var logo := TextureRect.new()
+	logo.texture = preload("res://arte/ui/logo.png")
+	logo.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	logo.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	logo.custom_minimum_size = Vector2(440, 220)
+	logo.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	$UI/Menu.add_child(logo)
+	$UI/Menu.move_child(logo, titulo.get_index())
+	titulo.visible = false
+	for nombre in ["Unirse", "Opciones", "Sala"]:
+		var t: Label = get_node("UI/%s/Titulo" % nombre)
+		t.add_theme_font_size_override("font_size", 32)
+		t.add_theme_font_override("font", TemaUI.fuente("bold"))
+		t.add_theme_color_override("font_color", Color("ffd36b"))
+	# Letrero detrás de cada pantalla (el menú lleva el logo encima, sin letrero).
+	for nombre in ["unirse", "opciones", "sala"]:
+		var letrero := Panel.new()
+		letrero.add_theme_stylebox_override("panel", TemaUI.panel_letrero())
+		letrero.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		ui.add_child(letrero)
+		ui.move_child(letrero, pantallas[nombre].get_index())
+		_letreros[letrero] = pantallas[nombre]
+	# Los controles van en Opciones, no encima de la partida.
+	var controles := Label.new()
+	controles.text = TemaUI.CONTROLES
+	controles.add_theme_font_size_override("font_size", 14)
+	controles.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	var titulo_controles := Label.new()
+	titulo_controles.text = "Controles"
+	titulo_controles.add_theme_font_override("font", TemaUI.fuente("bold"))
+	titulo_controles.add_theme_color_override("font_color", Color("ffd36b"))
+	titulo_controles.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	var volver_opciones: Control = $UI/Opciones/Volver
+	$UI/Opciones.add_child(titulo_controles)
+	$UI/Opciones.move_child(titulo_controles, volver_opciones.get_index())
+	$UI/Opciones.add_child(controles)
+	$UI/Opciones.move_child(controles, volver_opciones.get_index())
+	$UI/Opciones/TextoVolumen.text = "Volumen general"
+	Audio.agregar_deslizadores($UI/Opciones, $UI/Opciones/Volumen.get_index() + 1)
+	# Misión: recuadro chico que aparece un ratito al centro cuando cambia
+	# (ver _anunciar_mision); el resto del tiempo se consulta en la pausa (Esc).
+	_panel_mision = PanelContainer.new()
+	var caja := StyleBoxFlat.new()
+	caja.bg_color = Color(0.14, 0.08, 0.04, 0.88)
+	caja.border_color = Color("f2a93b")
+	caja.set_border_width_all(3)
+	caja.set_corner_radius_all(8)
+	caja.content_margin_left = 18
+	caja.content_margin_right = 18
+	caja.content_margin_top = 8
+	caja.content_margin_bottom = 10
+	_panel_mision.add_theme_stylebox_override("panel", caja)
+	_panel_mision.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_panel_mision.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	_panel_mision.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_panel_mision.offset_top = 96
+	_panel_mision.theme = TemaUI.tema()
+	_panel_mision.visible = false
+	ui.add_child(_panel_mision)
+	var columna_mision := VBoxContainer.new()
+	columna_mision.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_panel_mision.add_child(columna_mision)
+	var titulo_mision := Label.new()
+	titulo_mision.text = "MISIÓN"
+	titulo_mision.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	titulo_mision.add_theme_font_override("font", TemaUI.fuente("bold"))
+	titulo_mision.add_theme_font_size_override("font_size", 16)
+	titulo_mision.add_theme_color_override("font_color", Color("ffd36b"))
+	columna_mision.add_child(titulo_mision)
+	ui.remove_child(mision)
+	columna_mision.add_child(mision)
+	mision.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	mision.add_theme_color_override("font_color", Color("fff3d6"))
+	mision.add_theme_constant_override("outline_size", 0)
+	mision.add_theme_font_size_override("font_size", 14)
+	# Dato que sí urge tener siempre a la vista (la cuenta atrás, la olla…):
+	# chiquito, arriba al centro.
+	_dato_mision = Label.new()
+	_dato_mision.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
+	_dato_mision.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_dato_mision.offset_top = 14
+	_dato_mision.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_dato_mision.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_dato_mision.theme = TemaUI.tema()
+	_dato_mision.add_theme_font_override("font", TemaUI.fuente("bold"))
+	_dato_mision.add_theme_font_size_override("font_size", 18)
+	_dato_mision.add_theme_color_override("font_color", Color("ffd36b"))
+	ui.add_child(_dato_mision)
+	_flecha = preload("res://scripts/flecha_objetivo.gd").new()
+	_flecha.theme = TemaUI.tema()
+	ui.add_child(_flecha)
+	# Marco de madera alrededor de la barra del jefe (la canaleta queda en Fondo).
+	var fondo: ColorRect = $UI/Jefe/Fondo
+	fondo.color = Color("1d120c")
+	# La barra del jefe va abajo al centro: arriba quedan tu tarjeta y la misión.
+	var barra: Control = $UI/Jefe
+	barra.anchor_top = 1.0
+	barra.anchor_bottom = 1.0
+	barra.offset_top = -112.0
+	barra.offset_bottom = -68.0
+	# El nombre del jefe sube para no quedar bajo el marco.
+	$UI/Jefe/Texto.position.y -= 16
+	$UI/Jefe/Texto.add_theme_font_override("font", TemaUI.fuente("bold"))
+	$UI/Jefe/Texto.add_theme_font_size_override("font_size", 20)
+	# La sala es alta: más compacta para que quepa dentro del letrero.
+	$UI/Sala.add_theme_constant_override("separation", 6)
+	$UI/Sala/Titulo.add_theme_font_size_override("font_size", 28)
+	var marco := Panel.new()
+	marco.add_theme_stylebox_override("panel", TemaUI.marco_barra())
+	marco.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var hueco: Array = TemaUI.HUECO_BARRA
+	marco.position = fondo.position - Vector2(hueco[0], hueco[1])
+	marco.size = fondo.size + Vector2(hueco[0] + hueco[2], hueco[1] + hueco[3])
+	$UI/Jefe.add_child(marco)
+	# El marco va encima del relleno para tapar sus orillas.
+	$UI/Jefe.move_child(marco, $UI/Jefe/Barra.get_index() + 1)
+
+
+func _acomodar_letreros() -> void:
+	for letrero: Panel in _letreros:
+		var pantalla: Control = _letreros[letrero]
+		letrero.visible = pantalla.visible
+		if letrero.visible:
+			# Sin salirse de la pantalla (la sala es muy alta): mejor recortar el margen.
+			var caja := Rect2(pantalla.position - MARGEN_LETRERO, pantalla.size + MARGEN_LETRERO * 2)
+			caja = caja.intersection(get_viewport().get_visible_rect().grow(-6))
+			letrero.position = caja.position
+			letrero.size = caja.size
 
 
 func _mostrar(pantalla: String) -> void:
+	if pantalla == "opciones":
+		$UI/Opciones/Volumen.set_value_no_signal(Audio.volumen("general"))
+		$UI/Opciones/PantallaCompleta.set_pressed_no_signal(DisplayServer.window_get_mode() in [
+			DisplayServer.WINDOW_MODE_FULLSCREEN, DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN])
 	for nombre in pantallas:
 		pantallas[nombre].visible = nombre == pantalla
+	_fondo_menu.visible = pantalla != "juego"
+	if pantalla != "juego":
+		Audio.musica("menu")
+	else:
+		Audio.musica("jefe" if jefe.activa and jefe.estado != "derrotada" else "bosque")
 	juego.visible = pantalla == "juego"
-	ayuda.visible = pantalla == "juego"
+	# Los controles se consultan en Opciones; en partida no se muestran.
+	ayuda.visible = false
+	# Al entrar al bosque la misión se anuncia de nuevo.
+	_clave_mision = ""
+	if pantalla != "juego":
+		_panel_mision.hide()
 	mision.visible = pantalla == "juego"
 	hud.visible = pantalla == "juego"
 	if pantalla != "juego":
@@ -103,6 +398,7 @@ func _mostrar(pantalla: String) -> void:
 
 func _usar_bosque(bosque: Node2D) -> void:
 	juego = bosque
+	juego.process_mode = Node.PROCESS_MODE_PAUSABLE
 	jugadores = bosque.get_node("Mundo/Jugadores")
 	inicio = bosque.get_node("Inicio")
 	aparecedor = bosque.get_node("Aparecedor")
@@ -162,11 +458,15 @@ func _notification(que: int) -> void:
 
 
 func _fin_ronda(victoria: bool, filas: Array) -> void:
+	Audio.musica("victoria" if victoria else "derrota")
+	_aplicar_pausa(0)
 	hud.mostrar_resultados(victoria, filas)
 
 
-func _preparar_sala() -> void:
-	if not multiplayer.is_server() or _regresando_sala or not juego.get_node("Partida").finalizada:
+func _preparar_sala(desde_pausa: bool = false) -> void:
+	if not multiplayer.is_server() or _regresando_sala:
+		return
+	if not juego.get_node("Partida").finalizada and not (desde_pausa and get_tree().paused):
 		return
 	_regresando_sala = true
 	# Desaparecer primero los nodos replicados. Así los clientes procesan sus
@@ -180,8 +480,7 @@ func _preparar_sala() -> void:
 
 @rpc("authority", "call_local", "reliable")
 func _volver_sala() -> void:
-	if not juego.get_node("Partida").finalizada:
-		return
+	_aplicar_pausa(0)
 	# El bot de ayuda sigue marcándose listo solo en la siguiente ronda.
 	_auto = "--bot-ayuda" in OS.get_cmdline_user_args()
 	_regresando_sala = false
@@ -207,6 +506,7 @@ func _unirse() -> void:
 
 
 func _volver_al_menu(mensaje: String) -> void:
+	_aplicar_pausa(0)
 	# El bot de ayuda no se queda huérfano: si pierde la partida, se cierra.
 	if "--bot-ayuda" in OS.get_cmdline_user_args():
 		# La desconexión se notifica antes de terminar el cuadro: no seguir
@@ -224,6 +524,7 @@ func _volver_al_menu(mensaje: String) -> void:
 
 
 func _empezar_juego() -> void:
+	_aplicar_pausa(0)
 	_mostrar("juego")
 	print("Empieza la partida: %s" % [Red.jugadores])
 	if multiplayer.is_server():
@@ -232,6 +533,8 @@ func _empezar_juego() -> void:
 
 
 func _salio_jugador(id: int) -> void:
+	if multiplayer.is_server() and _pausado_por == id:
+		_aplicar_pausa.rpc(0)
 	if multiplayer.is_server() and jugadores.has_node(str(id)):
 		juego.get_node("Partida").torre.romper_desde(jugadores.get_node(str(id)))
 		for pieza in get_tree().get_nodes_in_group("piezas"):
@@ -267,4 +570,4 @@ func _pantalla_completa(activa: bool) -> void:
 
 
 func _volumen(valor: float) -> void:
-	AudioServer.set_bus_volume_db(0, linear_to_db(valor))
+	Audio.cambiar_volumen("general", valor)

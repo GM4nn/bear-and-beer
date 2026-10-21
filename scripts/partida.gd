@@ -21,6 +21,7 @@ var _todos_caidos := 0.0
 var _numero_charco := 0
 var _numero_botella := 0
 var torre: Node
+var abeja_musculosa: Node2D
 
 
 func _ready() -> void:
@@ -28,6 +29,9 @@ func _ready() -> void:
 	torre = TORRE.new()
 	torre.name = "Torre"
 	add_child(torre)
+	abeja_musculosa = preload("res://scripts/abeja_musculosa.gd").new()
+	abeja_musculosa.name = "AbejaMusculosa"
+	get_parent().get_node("Mundo").add_child(abeja_musculosa)
 	for i in SUMINISTROS.size():
 		var cerveza := CERVEZA.new()
 		cerveza.name = "Cerveza%d" % i
@@ -72,6 +76,7 @@ func _physics_process(delta: float) -> void:
 
 func terminar(gano: bool) -> void:
 	if multiplayer.is_server() and not finalizada:
+		abeja_musculosa.cancelar()
 		_cerrar.rpc(gano, estadisticas.values())
 
 
@@ -103,21 +108,22 @@ func _crear_charco(numero: int, sitio: Vector2) -> void:
 
 
 ## La llama el anfitrión cuando un jugador avienta una botella vacía.
-func lanzar_botella(jugador: Node2D, direccion: Vector2) -> void:
+func lanzar_botella(jugador: Node2D, direccion: Vector2, fuerza := 0.0) -> void:
 	if not multiplayer.is_server() or finalizada:
 		return
 	_numero_botella += 1
-	_crear_botella.rpc(_numero_botella, jugador.position, direccion, jugador.name.to_int(), jugador.altura)
+	_crear_botella.rpc(_numero_botella, jugador.position, direccion, jugador.name.to_int(), jugador.altura, fuerza)
 
 
 @rpc("authority", "call_local", "reliable")
-func _crear_botella(numero: int, origen: Vector2, direccion: Vector2, lanzador: int, altura_origen: float = 0.0) -> void:
+func _crear_botella(numero: int, origen: Vector2, direccion: Vector2, lanzador: int, altura_origen: float = 0.0, fuerza := 0.0) -> void:
 	var botella := BOTELLA.new()
 	botella.name = "Botella%d" % numero
 	botella.position = origen
 	botella.direccion = direccion
 	botella.lanzador = lanzador
 	botella.altura += altura_origen
+	botella.fuerza = fuerza
 	get_parent().get_node("Mundo").add_child(botella)
 
 

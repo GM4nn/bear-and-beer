@@ -108,15 +108,16 @@ func texto_mision() -> String:
 		return "¡Los oseznos comieron y ya lloran por su mamá! Mamá Osa viene en camino."
 	if _susto > 0.0:
 		return "¡Mamá Osa llegó y sus oseznos seguían con hambre! El equipo cayó."
+	# Se muestra en el panel de misión (main.gd): varias líneas cortas.
 	if terminada:
-		return "¡Denles la papilla a los oseznos! Mantengan E junto a ellos: %d%%      Mamá Osa llega en %d s" % [alimento * 100.0, ceili(tiempo)]
+		return "¡Denles la papilla a los oseznos!\nMantengan E junto a ellos: %d%%\nMamá Osa llega en %d s" % [alimento * 100.0, ceili(tiempo)]
 	if completa():
-		return "Mantengan E junto a la fogata para cocinar la papilla; si la sueltan, se baja: %d%%" % (progreso * 100.0)
+		return "Cocinen la papilla: mantengan E\njunto a la fogata (si la sueltan, se baja)\nAvance: %d%%" % (progreso * 100.0)
 	var ya := entregadas()
 	var partes := []
 	for tipo in NECESARIAS:
-		partes.append(("[x] " if tipo in ya else "[  ] ") + NECESARIAS[tipo])
-	return "Misión: lleven las piezas a la fogata del lago      " + "      ".join(partes)
+		partes.append(("[X] " if tipo in ya else "[  ] ") + NECESARIAS[tipo])
+	return "Lleven las piezas a la fogata del lago\n" + "     ".join(partes)
 
 
 func _physics_process(delta: float) -> void:

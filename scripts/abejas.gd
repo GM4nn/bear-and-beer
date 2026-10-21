@@ -1,7 +1,7 @@
 extends Node2D
 ## Enjambre de un panal. Ataca a quien se le acerque; durante la pelea contra
 ## el jefe sigue atacando con menos fuerza y solo se calma cuando el jefe cae.
-## Un golpe lo aturde un momento.
+## Cada impacto mata una abeja; cada hueco se repone desde su panal.
 ## Lo mueve el anfitrión; los demás solo reciben su posición.
 
 const VELOCIDAD := 185.0
@@ -10,13 +10,15 @@ const RADIO_DETECCION := 240.0
 const RADIO_PERSECUCION := 480.0
 const DANO := 3
 const ESPERA_PIQUETE := 0.8
-const ATURDIDO := 2.5
 # Durante la pelea contra el jefe: más lentas, pican menos seguido y más suave.
 const FRENO_EN_PELEA := 0.75
 const DANO_EN_PELEA := 2
 const ESPERA_PIQUETE_EN_PELEA := 1.6
 const CUADROS_ABEJA := "res://arte/zona1/abeja/%d.png"
 const CANTIDAD_ABEJAS := 5
+const REAPARICION := 8.0
+var vivas := (1 << CANTIDAD_ABEJAS) - 1
+var _reapariciones: Array[float] = [0.0, 0.0, 0.0, 0.0, 0.0]
 
 @export var miel: NodePath
 ## El enjambre del panal de la miel, además, persigue a quien la carga, esté
@@ -25,8 +27,10 @@ const CANTIDAD_ABEJAS := 5
 
 ## Están persiguiendo a alguien.
 var activas := false
+var _zumbido: AudioStreamPlayer2D
 ## Medio ancho extra para que los golpes las alcancen.
 var ancho := 0.0
+var alto_botella := 90.0
 
 var _casa := Vector2.ZERO
 var _espera := 0.0
@@ -44,6 +48,7 @@ var _hacia := 1.0
 
 func _ready() -> void:
 	add_to_group("golpeables")
+	add_to_group("enjambres")
 	_casa = position
 	_posicion_vista = position
 	# El panal se queda colgado en el árbol aunque el enjambre salga a perseguir.
@@ -70,6 +75,16 @@ func _ready() -> void:
 
 func _physics_process(delta: float) -> void:
 	if not multiplayer.is_server() or get_tree().get_first_node_in_group("partida").finalizada:
+		return
+	for i in CANTIDAD_ABEJAS:
+		if (vivas & (1 << i)) == 0:
+			_reapariciones[i] -= delta
+			if _reapariciones[i] <= 0:
+				vivas |= 1 << i
+	_actualizar_objetivo_golpe()
+	if vivas == 0:
+		activas = false
+		position = position.move_toward(_casa, VELOCIDAD * delta)
 		return
 	var pieza: Node2D = get_node(miel)
 	var estacion := get_tree().get_first_node_in_group("estacion")
@@ -107,6 +122,13 @@ func _physics_process(delta: float) -> void:
 
 
 func _process(_delta: float) -> void:
+	_actualizar_objetivo_golpe()
+	if _zumbido == null:
+		_zumbido = Audio.bucle_en(self, "abejas", -8.0)
+	if activas and vivas != 0 and not _zumbido.playing:
+		_zumbido.play()
+	elif not (activas and vivas != 0) and _zumbido.playing:
+		_zumbido.stop()
 	# Miran hacia donde se mueve el enjambre (las abejas están dibujadas mirando a la derecha).
 	var avance := position.x - _posicion_vista.x
 	if absf(avance) > 0.5:
@@ -114,6 +136,7 @@ func _process(_delta: float) -> void:
 	_posicion_vista = position
 	var t := Time.get_ticks_msec() / 1000.0
 	for i in _abejas.size():
+		_abejas[i].visible = (vivas & (1 << i)) != 0
 		var fase := _fases[i]
 		# Cada una revolotea en su propio ocho alrededor del centro del enjambre.
 		_abejas[i].position = Vector2(sin(t * 2.3 + fase) * 30.0, sin(t * 4.6 + fase * 1.7) * 18.0 - 6.0)
@@ -123,20 +146,52 @@ func _process(_delta: float) -> void:
 
 
 ## La llama el anfitrión cuando un jugador le pega al enjambre.
-func golpeada(dir: int, _quien: Node2D) -> void:
-	_aturdidas = ATURDIDO
-	position.x += dir * 50.0
+func golpeada(dir: int, quien: Node2D) -> void:
+	var partida := get_tree().get_first_node_in_group("partida")
+	if not multiplayer.is_server() or partida.finalizada or vivas == 0 or quien == null:
+		return
+	for i in CANTIDAD_ABEJAS:
+		if (vivas & (1 << i)) == 0:
+			continue
+		vivas &= ~(1 << i)
+		_reapariciones[i] = REAPARICION
+		_caer.rpc(i, dir)
+		partida.abeja_musculosa.registrar_baja(global_position)
+		break
+	_aturdidas = 0.35
+	position.x += dir * 15.0
+	_actualizar_objetivo_golpe()
+
+
+func _actualizar_objetivo_golpe() -> void:
+	if vivas == 0 and is_in_group("golpeables"):
+		remove_from_group("golpeables")
+	elif vivas != 0 and not is_in_group("golpeables"):
+		add_to_group("golpeables")
+
+
+@rpc("authority", "call_local", "reliable")
+func _caer(indice: int, dir: int) -> void:
+	var cuerpo := Sprite2D.new()
+	cuerpo.texture = _abejas[indice].texture
+	cuerpo.position = _abejas[indice].global_position - get_parent().global_position
+	get_parent().add_child(cuerpo)
+	var t := create_tween().set_parallel()
+	t.tween_property(cuerpo, "position", cuerpo.position + Vector2(dir * 38, 40), 0.65).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	t.tween_property(cuerpo, "rotation", dir * PI, 0.65)
+	t.tween_property(cuerpo, "modulate:a", 0.0, 0.35).set_delay(0.3)
+	t.chain().tween_callback(cuerpo.queue_free)
 
 
 # Atacan a quien se acerque al panal y lo persiguen hasta que se aleja. El
 # enjambre de la miel, una vez furioso, cuida la zona donde ande y no su panal.
 func _buscar_presa() -> Node2D:
 	var centro := position if _furiosas else _casa
-	if is_instance_valid(_presa) and not _presa.caido and centro.distance_to(_presa.position) <= RADIO_PERSECUCION:
+	if is_instance_valid(_presa) and not _presa.caido and not _presa.en_forcejeo() and centro.distance_to(_presa.position) <= RADIO_PERSECUCION:
 		return _presa
 	_presa = null
 	for j: Node2D in get_tree().get_nodes_in_group("jugadores"):
-		if j.caido:
+		if j.caido or j.en_forcejeo():
 			continue
 		var lejos := centro.distance_to(j.position)
 		if lejos <= RADIO_DETECCION and (_presa == null or lejos < centro.distance_to(_presa.position)):

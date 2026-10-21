@@ -19,8 +19,8 @@ offset_right = 1260.0
 offset_bottom = 40.0
 theme_override_colors/font_outline_color = Color(0.05, 0.12, 0.1, 1)
 theme_override_constants/outline_size = 4
-theme_override_font_sizes/font_size = 14
-text = "WASD / stick: mover · Espacio / A: saltar · J / X: golpear · Shift / B: rodar · Q / RB: beber · F / LB: lanzar botella · E / Y: recoger / mantener para levantar · Esc: salir"
+theme_override_font_sizes/font_size = 12
+text = "H: puño derecho · J: puño izquierdo · K: cabezazo · L: patada · F: parada\nWASD: mover · Espacio: saltar · Shift: rodar · E: agarrar · Q: beber · R: botella / compa desde torre · Esc: pausa"
 
 [node name="Mision" type="Label" parent="UI" unique_id=977396987]
 offset_left = 16.0

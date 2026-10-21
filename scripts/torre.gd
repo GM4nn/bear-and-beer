@@ -3,11 +3,12 @@ extends Node
 ## pasajeros desde la base para que no se separen por el orden de los paquetes.
 
 const MAX_COMPAS := 3
-const ALTURA_HOMBROS := 60.0
+const ALTURA_HOMBROS := 48.0
 const RADIO_X := 28.0
 const RADIO_Y := 22.0
 const VENTANA_CRITICO := 0.18
 var _impactos: Dictionary = {}
+var _tiempo_juego := 0.0
 ## Contador visual local, también útil para comprobar que el aviso se replica.
 var criticos := 0
 
@@ -92,7 +93,7 @@ func _montar(id: int, apoyo: int) -> void:
 	compa.velocity = Vector2.ZERO
 	compa._vel_altura = 0.0
 	compa._volando = false
-	compa._golpe_pendiente = -1.0
+	compa._cancelar_golpes()
 	compa._anim_golpe = 0.0
 	compa.manteniendo = false
 	_alinear()
@@ -138,8 +139,9 @@ func _soltar(id: int, sitio: Vector2, alto: float, impulso: float) -> void:
 
 
 func _physics_process(_delta: float) -> void:
+	_tiempo_juego += _delta * 1000.0
 	for clave in _impactos.keys():
-		if Time.get_ticks_msec() - _impactos[clave].inicio > VENTANA_CRITICO * 1000:
+		if _tiempo_juego - _impactos[clave].inicio > VENTANA_CRITICO * 1000:
 			_impactos.erase(clave)
 	if get_parent().finalizada:
 		_impactos.clear()
@@ -187,7 +189,7 @@ func bono_impacto(compa: Node2D, objetivo: Node2D, dir: int, dano: int) -> int:
 		return 0
 	var ids := compas.map(func(j): return j.name.to_int())
 	var clave := objetivo.get_instance_id()
-	var ahora := Time.get_ticks_msec()
+	var ahora := _tiempo_juego
 	var registro: Dictionary = _impactos.get(clave, {})
 	if registro.is_empty() or registro.ids != ids or registro.dir != dir \
 			or ahora - registro.inicio > VENTANA_CRITICO * 1000:
@@ -207,6 +209,7 @@ func bono_impacto(compa: Node2D, objetivo: Node2D, dir: int, dano: int) -> int:
 @rpc("authority", "call_local", "reliable")
 func _mostrar_critico(donde: Vector2, ids: Array) -> void:
 	criticos += 1
+	Audio.efecto("torre_critico", 0.0, 0.0)
 	var aviso := Label.new()
 	aviso.text = "¡CRÍTICO DE TORRE! ×2"
 	aviso.add_theme_color_override("font_color", Color("ffe575"))

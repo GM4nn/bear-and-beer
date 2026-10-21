@@ -82,17 +82,16 @@ position = Vector2(0, -6)
 shape = SubResource("forma")
 
 [node name="Sombra" type="ColorRect" parent="."]
-offset_left = -24.0
-offset_top = -6.0
-offset_right = 24.0
-offset_bottom = 6.0
+offset_left = -32.0
+offset_top = -7.0
+offset_right = 32.0
+offset_bottom = 7.0
 mouse_filter = 2
 color = Color(0, 0, 0, 0.35)
 
 [node name="Visual" type="Node2D" parent="."]
 
 [node name="Sprite" type="AnimatedSprite2D" parent="Visual"]
-scale = Vector2(3, 3)
 
 [node name="Vida" type="Label" parent="Visual"]
 offset_left = -70.0

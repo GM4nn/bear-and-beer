@@ -55,22 +55,21 @@ class Prueba extends Node:
 		await _esperar(0.2)
 		_orden.rpc_id(cliente, "rafaga")
 		await _esperar(0.15)
-		_comprobar(anfitrion.vida == 90, "Dos RPC inmediatas causan un solo golpe")
+		_comprobar(anfitrion.vida == 90, "Dos RPC inmediatas no superponen sus contactos")
 		await _esperar(0.4)
 		_colocar.rpc()
 		await _esperar(0.2)
 		_orden.rpc_id(cliente, "rafaga")
 		await _esperar(0.15)
-		_comprobar(anfitrion.vida == 80, "Se acepta otro golpe al terminar la espera")
+		_comprobar(anfitrion.vida == 80, "El siguiente contacto del cliente causa daño")
 
 		_colocar.rpc()
 		await _esperar(0.2)
 		anfitrion.golpear(1)
-		anfitrion.golpear(1)
 		await _esperar(0.15)
 		await _consultar()
 		_comprobar(invitado.vida == 90 and informe.vida == 90,
-			"El anfitrión respeta la misma espera y el cliente recibe el daño")
+			"El golpe del anfitrión se confirma y el cliente recibe el daño")
 		invitado.recibir_dano(3)
 		await _esperar(0.15)
 		await _consultar()
@@ -303,6 +302,7 @@ class Prueba extends Node:
 	func _colocar(origen := Vector2(1000, 520)) -> void:
 		if multiplayer.is_server():
 			for jugador in main.jugadores.get_children():
+				jugador._cancelar_golpes() # Cada caso empieza sin ataques encolados del anterior.
 				jugador.aturdimiento = 0
 				jugador.proteccion = 0
 		var j = main.jugadores.get_node(str(multiplayer.get_unique_id()))

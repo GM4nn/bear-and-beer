@@ -1,0 +1,42 @@
+CRÉDITOS DE MÚSICA Y SONIDO - BEAR AND BEER
+============================================
+
+Música del menú principal  (arte/audio/musica/menu.mp3)
+  Título:    Mexico Mexican Mariachi Music
+  Autor:     ikoliks_aj (Pixabay)
+  Enlace:    https://pixabay.com/music/latin-mexico-mexican-mariachi-music-468180/
+  Licencia:  Pixabay Content License (uso comercial permitido, crédito opcional)
+  Descargada: 18 de octubre de 2026
+
+
+Efectos de sonido de Pixabay  (arte/audio/efectos/)
+  Licencia:  Pixabay Content License (uso comercial permitido, crédito opcional)
+  Descargados: 20 de octubre de 2026 (recortado el silencio del inicio y del final)
+
+  impacto.mp3     (el jugador recibe un golpe)
+    Título:  Thud Impact Sound SFX
+    Enlace:  https://pixabay.com/es/sound-effects/pel%C3%ADculas-y-efectos-especiales-thud-impact-sound-sfx-379990/
+
+  golpe.mp3       (el jugador da un golpe)
+    Título:  Punch 2
+    Enlace:  https://pixabay.com/es/sound-effects/pel%C3%ADculas-y-efectos-especiales-punch-2-37333/
+
+  pisoton.mp3     (pasos de Mamá Osa en la embestida)
+    Título:  Traditional Stamp
+    Enlace:  https://pixabay.com/sound-effects/film-special-effects-traditional-stamp-44189/
+
+  rugido-oso.mp3  (rugidos de Mamá Osa)
+    Título:  Bear Growl
+    Enlace:  https://pixabay.com/es/sound-effects/naturaleza-bear-growl-191995/
+
+  osa_forcejeo_grunido.mp3  (gruñido de la osa al forcejear con la abeja)
+    Título:  Powerful Bear Attack With Roar 5
+    Enlace:  https://pixabay.com/es/sound-effects/horror-powerful-bear-attack-with-roar-5-482527/
+
+  abeja_zumbido.mp3  (alas de la abeja musculosa al pelear con la osa)
+    Título:  Bee Flying Loop
+    Enlace:  https://pixabay.com/es/sound-effects/naturaleza-bee-flying-loop-42287/
+
+
+Música y efectos restantes
+  Compuestos para el juego con herramientas/componer_audio.py (originales).

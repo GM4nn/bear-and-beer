@@ -6,6 +6,7 @@ signal golpeado
 
 ## Medio ancho extra para que los golpes lo alcancen.
 @export var ancho := 0.0
+@export var alto_botella := 60.0
 
 
 func _ready() -> void:

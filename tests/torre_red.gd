@@ -54,7 +54,7 @@ class Prueba extends Node:
 		_comprobar(_j(medio).apoyo_id == 1, "Saltar y pulsar E monta al cliente sobre el anfitrión")
 		await _subir(cima, 1)
 		_comprobar(_j(cima).apoyo_id == medio, "El tercer compañero ocupa los hombros superiores")
-		_comprobar(is_equal_approx(_j(cima).altura, 120.0), "La torre tiene dos niveles sobre la base")
+		_comprobar(is_equal_approx(_j(cima).altura, 96.0), "La torre tiene dos niveles sobre la base")
 		await _consultar()
 		_comprobar(_todos_apoyos(medio, 1) and _todos_apoyos(cima, medio), "Los cuatro peers ven la misma torre")
 		_comprobar(_j(1)._animacion == "cargar_quieto" and _j(medio)._animacion == "hombros_cargar"
@@ -83,7 +83,7 @@ class Prueba extends Node:
 		_comprobar(juntos, "La torre acompaña el movimiento de la base en todas las pantallas")
 		_accion.rpc_id(1, "saltar")
 		await _esperar(0.2)
-		_comprobar(_j(1).altura > 30 and is_equal_approx(_j(cima).altura - _j(1).altura, 120.0),
+		_comprobar(_j(1).altura > 30 and is_equal_approx(_j(cima).altura - _j(1).altura, 96.0),
 			"La base puede saltar manteniendo los niveles de la torre")
 		await _esperar(0.6)
 
@@ -150,7 +150,7 @@ class Prueba extends Node:
 		_j(1).botellas = 1
 		_j(1).pedir_lanzar()
 		var botella = main.juego.get_node("Mundo").get_node_or_null("Botella1")
-		_comprobar(botella != null and botella.altura >= 140,
+		_comprobar(botella != null and botella.altura >= 96,
 			"La botella sale de la altura del pasajero, no desde el suelo")
 		_desconectar.rpc_id(medio)
 		await _esperar(0.5)
