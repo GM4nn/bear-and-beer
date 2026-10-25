@@ -31,6 +31,7 @@ func _ready() -> void:
 	listo.toggled.connect(Red.pedir_listo)
 	empezar.pressed.connect(Red.iniciar_partida)
 	Red.jugadores_cambiaron.connect(_actualizar)
+	Red.conexion_cambio.connect(_actualizar)
 	visibility_changed.connect(_actualizar)
 
 
@@ -69,7 +70,7 @@ func _lugar(id: int, mi_id: int) -> Control:
 	var caja := VBoxContainer.new()
 	caja.custom_minimum_size = Vector2(160, 0)
 	var retrato := Control.new()
-	retrato.custom_minimum_size = Vector2(80, 100)
+	retrato.custom_minimum_size = Vector2(120, 140)
 	retrato.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	var nombre := Label.new()
 	nombre.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -87,21 +88,36 @@ func _lugar(id: int, mi_id: int) -> Control:
 		nombre.text = "Vacío"
 	else:
 		var datos: Dictionary = Red.jugadores[id]
+		# De frente, a su tamaño normal, con los pies abajo del recuadro.
 		var compa := AnimatedSprite2D.new()
-		compa.sprite_frames = Jugador._cuadros_compartidos()
+		compa.sprite_frames = _cuadros_frente()
 		compa.offset = Jugador.DESFASE_SPRITE
-		compa.position = Vector2(40, 92)
-		compa.scale = Vector2(3, 3)
+		compa.position = Vector2(60, 140)
 		var tinte := ShaderMaterial.new()
 		tinte.shader = Jugador.SHADER_COLOR
 		tinte.set_shader_parameter("color_jugador", Jugador.COLORES[datos.color])
 		compa.material = tinte
-		compa.play("quieto")
+		compa.play("quieto_frente")
 		retrato.add_child(compa)
 		nombre.text = datos.nombre + (" (tú)" if id == mi_id else "")
-		estado.text = "Listo" if datos.listo else "Eligiendo..."
+		estado.text = ("Listo" if datos.listo else "Eligiendo...") + "\n" + Red.texto_conexion(id)
 
 	caja.add_child(retrato)
 	caja.add_child(nombre)
 	caja.add_child(estado)
 	return caja
+
+
+# Personaje de frente respirando (arte/jugador/quieto_frente), compartido.
+static var _frente: SpriteFrames
+static func _cuadros_frente() -> SpriteFrames:
+	if _frente == null:
+		_frente = SpriteFrames.new()
+		_frente.remove_animation("default")
+		_frente.add_animation("quieto_frente")
+		_frente.set_animation_speed("quieto_frente", 6.0)
+		var n := 0
+		while ResourceLoader.exists("res://arte/jugador/quieto_frente/%d.png" % n):
+			_frente.add_frame("quieto_frente", load("res://arte/jugador/quieto_frente/%d.png" % n))
+			n += 1
+	return _frente

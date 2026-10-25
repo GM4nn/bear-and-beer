@@ -1,6 +1,8 @@
 extends Node2D
 ## Lee el estado replicado de la misión; las animaciones no deciden su avance.
 const ARTE := preload("res://scripts/arte_objetos.gd")
+var fuego: AnimatedSprite2D
+var humo: Node2D
 var olla: Sprite2D
 var papilla: AnimatedSprite2D
 var rota: Sprite2D
@@ -17,9 +19,10 @@ func _ready() -> void:
 	var estacion := get_parent()
 	for nombre in ["Piedras", "Fuego", "Papilla", "Osezno1", "Osezno2"]:
 		estacion.get_node(nombre).hide()
-	var fuego := ARTE.animado({"arder": "res://arte/zona1/fogata"}, 3, 8)
+	fuego = ARTE.animado({"arder": "res://arte/zona1/fogata"}, 3, 8)
 	add_child(fuego)
-	add_child(load("res://scripts/fogata_visual.gd").new())
+	humo = load("res://scripts/fogata_visual.gd").new()
+	add_child(humo)
 	olla = ARTE.estatico("olla", 1.5)
 	olla.position.y = -18
 	add_child(olla)
@@ -57,6 +60,8 @@ func _process(delta: float) -> void:
 
 func _actualizar(delta: float) -> void:
 	var e := get_parent()
+	fuego.visible = e.fogata.encendida
+	humo.visible = e.fogata.encendida
 	_tiempo += delta
 	_comiendo = maxf(_comiendo - delta, 0)
 	_susto_crias = maxf(_susto_crias - delta, 0)
@@ -78,5 +83,7 @@ func _actualizar(delta: float) -> void:
 	papilla.position.x = olla.position.x
 	var anim := "llorar" if e.alimentados or e._susto > 0 or _susto_crias > 0 else "comer" if _comiendo > 0 else "quieto"
 	for cria in crias:
+		var rescate := get_tree().get_first_node_in_group("rescate_oseznos")
+		cria.visible = rescate == null or crias.find(cria) < rescate.rescatados
 		if cria.animation != anim:
 			cria.play(anim)

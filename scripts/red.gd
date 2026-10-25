@@ -14,9 +14,14 @@ var puerto := PUERTO
 var mi_nombre := "Jugador"
 ## id -> { "nombre": String, "color": int, "listo": bool }
 var jugadores: Dictionary = {}
+var latencias := {}
+var _sondeos := {}
+var _siguiente_sondeo := 0.0
+signal conexion_cambio
 
 
 func _ready() -> void:
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--puerto="):
 			puerto = arg.get_slice("=", 1).to_int()
@@ -46,6 +51,8 @@ func salir() -> void:
 	multiplayer.multiplayer_peer.close()
 	multiplayer.multiplayer_peer = OfflineMultiplayerPeer.new()
 	jugadores.clear()
+	latencias.clear()
+	_sondeos.clear()
 	jugadores_cambiaron.emit()
 
 
@@ -76,11 +83,17 @@ func iniciar_partida() -> void:
 
 func ip_local() -> String:
 	var ips := IP.get_local_addresses()
-	# Con Hamachi los amigos se conectan a la IP de Hamachi (25.x.x.x), así que va primero.
+	# Con una red virtual los amigos se conectan a esa IP, así que va primero:
+	# Radmin VPN (26.x.x.x) y Hamachi (25.x.x.x).
+	for prefijo in ["26.", "25."]:
+		for ip in ips:
+			if ip.begins_with(prefijo):
+				return ip
+	# Luego la red de casa, sin los adaptadores de máquinas virtuales
+	# (VirtualBox usa 192.168.56.x).
 	for ip in ips:
-		if ip.begins_with("25."):
-			return ip
-	for ip in ips:
+		if ip.begins_with("192.168.56."):
+			continue
 		if ip.begins_with("192.168.") or ip.begins_with("10.") or ip.begins_with("172."):
 			return ip
 	return "127.0.0.1"
@@ -142,3 +155,57 @@ func _sincronizar(datos: Dictionary) -> void:
 @rpc("authority", "call_local", "reliable")
 func _iniciar() -> void:
 	partida_iniciada.emit()
+
+
+func _process(delta: float) -> void:
+	if multiplayer.multiplayer_peer == null or multiplayer.multiplayer_peer.get_connection_status() != MultiplayerPeer.CONNECTION_CONNECTED:
+		return
+	if not multiplayer.is_server() or jugadores.is_empty():
+		return
+	_siguiente_sondeo -= delta
+	if _siguiente_sondeo > 0:
+		return
+	_siguiente_sondeo = 2.0
+	for id in multiplayer.get_peers():
+		if _sondeos.has(id):
+			latencias[id] = -1
+		var marca := Time.get_ticks_msec()
+		_sondeos[id] = marca
+		_ping.rpc_id(id, marca)
+	for id in latencias.keys():
+		if not jugadores.has(id):
+			latencias.erase(id)
+			_sondeos.erase(id)
+	_red_estado.rpc(latencias)
+
+
+@rpc("authority", "call_remote", "unreliable")
+func _ping(marca: int) -> void:
+	_pong.rpc_id(1, marca)
+
+
+@rpc("any_peer", "call_remote", "unreliable")
+func _pong(marca: int) -> void:
+	if not multiplayer.is_server():
+		return
+	var id := multiplayer.get_remote_sender_id()
+	if not _sondeos.has(id) or _sondeos[id] != marca:
+		return
+	latencias[id] = maxi(Time.get_ticks_msec() - marca, 0)
+	_sondeos.erase(id)
+	_red_estado.rpc(latencias)
+
+
+@rpc("authority", "call_local", "unreliable")
+func _red_estado(datos: Dictionary) -> void:
+	latencias = datos.duplicate()
+	conexion_cambio.emit()
+
+
+func texto_conexion(id: int) -> String:
+	if id == 1:
+		return "Anfitrión"
+	var ms := int(latencias.get(id, -1))
+	if ms < 0:
+		return "Sin respuesta / midiendo"
+	return "%d ms · %s" % [ms, "Buena" if ms < 90 else "Regular" if ms < 180 else "Alta latencia"]

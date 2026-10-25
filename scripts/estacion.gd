@@ -11,7 +11,7 @@ const TIEMPO := 8.0
 const TIEMPO_VACIAR := 6.0
 const TIEMPO_ALIMENTAR := 10.0
 const TIEMPO_LIMITE := 30.0
-const NECESARIAS := {"miel": "Miel", "olla": "Olla", "lena": "Leña"}
+const NECESARIAS := {"miel": "Miel", "olla": "Olla", "lena": "Fogata"}
 
 ## Avance de cocinar la papilla (0 a 1).
 var progreso := 0.0
@@ -27,6 +27,7 @@ var alimentados := false
 var vida_olla := 100
 
 var _susto := 0.0
+var fogata: Node2D
 
 @onready var barra_fondo: ColorRect = $BarraFondo
 @onready var barra: ColorRect = $Barra
@@ -38,6 +39,9 @@ var _susto := 0.0
 
 func _ready() -> void:
 	add_to_group("estacion")
+	fogata = preload("res://scripts/fogata_cooperativa.gd").new()
+	fogata.name = "FogataCooperativa"
+	add_child(fogata)
 	$GolpeOlla.golpeado.connect(danar_olla.bind(10))
 	$GolpeOseznos.golpeado.connect(_pegaron_a_osezno)
 	var arte: Node2D = preload("res://scripts/estacion_visual.gd").new()
@@ -83,11 +87,13 @@ func entregadas() -> Array:
 	for pieza in get_tree().get_nodes_in_group("piezas"):
 		if pieza.entregada:
 			tipos.append(pieza.tipo)
+	if fogata != null and fogata.encendida:
+		tipos.append("lena")
 	return tipos
 
 
 func completa() -> bool:
-	return entregadas().size() >= NECESARIAS.size()
+	return fogata.habilitada() and fogata.encendida and NECESARIAS.keys().all(func(tipo): return tipo in entregadas())
 
 
 func lugar_oseznos() -> Vector2:
@@ -96,7 +102,9 @@ func lugar_oseznos() -> Vector2:
 
 ## Solo la llama el anfitrión, cuando alguien suelta una pieza.
 func intentar_entregar(pieza: Node2D, desde: Vector2) -> bool:
-	if desde.distance_to(position) > RADIO or not NECESARIAS.has(pieza.tipo):
+	if not fogata.habilitada():
+		return false
+	if desde.distance_to(position) > RADIO or pieza.tipo == "lena" or not NECESARIAS.has(pieza.tipo):
 		return false
 	pieza.entregar(position + Vector2(-56 + 56 * entregadas().size(), 22))
 	print("Entregaron: %s" % pieza.tipo)
@@ -104,6 +112,9 @@ func intentar_entregar(pieza: Node2D, desde: Vector2) -> bool:
 
 
 func texto_mision() -> String:
+	var rescate := get_tree().get_first_node_in_group("rescate_oseznos")
+	if rescate != null and not rescate.listo():
+		return "Rescaten a los oseznos: %d/2\n%s\nTorre de 2 o 3 · E para atajar · %s/%s para equilibrarse" % [rescate.rescatados, rescate.mensaje, Controles.tecla("izquierda"), Controles.tecla("derecha")]
 	if alimentados:
 		return "¡Los oseznos comieron y ya lloran por su mamá! Mamá Osa viene en camino."
 	if _susto > 0.0:
@@ -113,6 +124,8 @@ func texto_mision() -> String:
 		return "¡Denles la papilla a los oseznos!\nMantengan E junto a ellos: %d%%\nMamá Osa llega en %d s" % [alimento * 100.0, ceili(tiempo)]
 	if completa():
 		return "Cocinen la papilla: mantengan E\njunto a la fogata (si la sueltan, se baja)\nAvance: %d%%" % (progreso * 100.0)
+	if not fogata.encendida:
+		return "Fogata del lago · Palos colocados: %d/2\n%s" % [fogata.colocados, fogata.mensaje]
 	var ya := entregadas()
 	var partes := []
 	for tipo in NECESARIAS:
@@ -148,6 +161,12 @@ func _physics_process(delta: float) -> void:
 
 
 func _process(delta: float) -> void:
+	var rescate := get_tree().get_first_node_in_group("rescate_oseznos")
+	var hay_crias: bool = rescate == null or rescate.rescatados > 0
+	if hay_crias and not $GolpeOseznos.is_in_group("golpeables"):
+		$GolpeOseznos.add_to_group("golpeables")
+	elif not hay_crias and $GolpeOseznos.is_in_group("golpeables"):
+		$GolpeOseznos.remove_from_group("golpeables")
 	_susto -= delta
 	barra_fondo.visible = completa() and not terminada
 	barra.visible = barra_fondo.visible

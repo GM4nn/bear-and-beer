@@ -37,7 +37,8 @@ const TIEMPO_CARGAR_BOTELLA := 1.2
 const ALTURA_SUJETO := 70.0
 const FRENO_NADANDO := 0.55
 # Cuánto se baja el dibujo del que va en hombros, según el piso (ver _ajustar_postura_hombros).
-const BAJADA_HOMBROS := [0.0, 0.0, 0.0]
+# En el piso 2 el de abajo va sentado y sus hombros quedan 6 px más bajos que los de la base.
+const BAJADA_HOMBROS := [0.0, 0.0, 6.0]
 # Náusea y vómito: tiempo máximo con los cachetes inflados, arcadas (E) para
 # vomitar antes, cuánto dura el vómito y su daño a lo que tenga enfrente.
 const TIEMPO_NAUSEA := 4.0
@@ -55,7 +56,8 @@ const BAJADA_BORRACHERA := 0.5
 const CURA_CERVEZA := 35
 const TIEMPO_BEBER := 2.0
 const TIEMPO_REVIVIR := 3.0
-const RADIO_REVIVIR := 60.0
+## Zona para revivir a un caído: ancha, porque acostado ocupa todo su cuerpo.
+const RADIO_REVIVIR := Vector2(130.0, 55.0)
 const DURACION_RODAR := 0.32
 const ESPERA_RODAR := 1.1
 const NIVELES := ["Sobrio", "Alegre", "Pedo", "Hasta atrás"]
@@ -107,6 +109,9 @@ var botellas := 0
 var borrachera := 0.0
 var caido := false
 var reanimacion := 0.0
+var arma_tiempo := 0.0
+var _barra_revivir: ProgressBar
+var _texto_revivir: Label
 var bebiendo := 0.0
 var dormido := 0.0
 var vomitando := 0.0
@@ -139,6 +144,8 @@ var _cola_golpes: Array[Dictionary] = []
 ## Tiempo mínimo entre el inicio de un golpe y el siguiente (las pulsaciones se guardan).
 const ENTRE_GOLPES := 0.15
 var _recuperacion := 0.0
+var _repeticion := 0.0
+var _ultimo_tipo := -1
 
 var _vel_altura := 0.0
 var _volando := false
@@ -219,6 +226,33 @@ func _ready() -> void:
 	combate = preload("res://scripts/combate_compas.gd").new()
 	combate.name = "CombateCompas"
 	add_child(combate)
+	_barra_revivir = ProgressBar.new()
+	_barra_revivir.name = "ProgresoRevivir"
+	_barra_revivir.position = Vector2(-70, -44)
+	_barra_revivir.size = Vector2(140, 14)
+	_barra_revivir.max_value = 1.0
+	_barra_revivir.show_percentage = false
+	var canal_revivir := StyleBoxFlat.new()
+	canal_revivir.bg_color = Color("1d120c")
+	canal_revivir.border_color = Color("ffe3a1")
+	canal_revivir.set_border_width_all(2)
+	_barra_revivir.add_theme_stylebox_override("background", canal_revivir)
+	var relleno_revivir := StyleBoxFlat.new()
+	relleno_revivir.bg_color = Color("71dc78")
+	_barra_revivir.add_theme_stylebox_override("fill", relleno_revivir)
+	_barra_revivir.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_barra_revivir.z_index = 15
+	add_child(_barra_revivir)
+	_texto_revivir = Label.new()
+	_texto_revivir.position = Vector2(-110, -70)
+	_texto_revivir.size.x = 220
+	_texto_revivir.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_texto_revivir.add_theme_font_size_override("font_size", 13)
+	_texto_revivir.add_theme_color_override("font_outline_color", Color("1d120c"))
+	_texto_revivir.add_theme_constant_override("outline_size", 4)
+	_texto_revivir.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_texto_revivir.z_index = 15
+	add_child(_texto_revivir)
 	combo = preload("res://scripts/combo.gd").new()
 	combo.name = "Combo"
 	add_child(combo)
@@ -231,10 +265,14 @@ func _ready() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	if multiplayer.multiplayer_peer == null or multiplayer.multiplayer_peer.get_connection_status() != MultiplayerPeer.CONNECTION_CONNECTED:
+		return
 	if _partida().finalizada:
 		_cancelar_golpes()
 		manteniendo = false
 		return
+	if multiplayer.is_server():
+		arma_tiempo = maxf(arma_tiempo - delta, 0.0)
 	if en_forcejeo():
 		manteniendo = false
 		velocity = Vector2.ZERO
@@ -253,10 +291,27 @@ func _physics_process(delta: float) -> void:
 		return
 	if multiplayer.is_server():
 		_espera_servidor = maxf(_espera_servidor - delta, 0.0)
+		_repeticion = maxf(_repeticion - delta, 0.0)
 		_recuperacion = maxf(_recuperacion - delta, 0.0)
 		_actualizar_estado(delta)
 		_procesar_cola_golpes()
 		_actualizar_golpe(delta)
+	if en_rescate():
+		manteniendo = false
+		velocity = Vector2.ZERO
+		return
+	if en_fogata():
+		manteniendo = false
+		velocity = Vector2.ZERO
+		if is_multiplayer_authority():
+			if not _bot.is_empty():
+				_bot_fogata(delta)
+			elif Input.is_action_just_pressed("agarrar"):
+				if multiplayer.is_server():
+					pedir_agarrar()
+				else:
+					pedir_agarrar.rpc_id(1)
+		return
 	if not is_multiplayer_authority():
 		return
 	_espera -= delta
@@ -342,7 +397,7 @@ func _physics_process(delta: float) -> void:
 			manteniendo = false
 			return
 		if _bot:
-			# El bot de torre ayuda con la misión y solo se monta mientras pelea la osa.
+			# La misión decide cuándo montar para el rescate; en combate ayuda a la torre.
 			var modo := "mision" if _bot == "torre" and not _bot_osa_presente() else _bot
 			var bot := _bot_torre(delta) if modo == "torre" else _bot_pelea() if modo == "pelea" else _bot_mision(delta)
 			dir = bot.dir
@@ -388,6 +443,8 @@ func _physics_process(delta: float) -> void:
 
 
 func _process(delta: float) -> void:
+	if multiplayer.multiplayer_peer == null or multiplayer.multiplayer_peer.get_connection_status() != MultiplayerPeer.CONNECTION_CONNECTED:
+		return
 	_tiempo_aviso_bebida = maxf(_tiempo_aviso_bebida - delta, 0.0)
 	_parpadeo -= delta
 	_golpe_visible -= delta
@@ -413,6 +470,8 @@ func _process(delta: float) -> void:
 	if en_forcejeo():
 		sprite.position += _partida().abeja_musculosa.empuje_visual()
 	sprite.rotation = combate.tiempo_vuelo * 9.0 * combate.direccion_vuelo if combate.volando else 0.0
+	if en_rescate():
+		sprite.rotation = _partida().rescate.equilibrio * 0.10
 	if combate.volando:
 		# Girar alrededor del cuerpo, conservando su posición respecto a los pies.
 		sprite.position.y = -60
@@ -424,10 +483,16 @@ func _process(delta: float) -> void:
 	_chorro.position = Vector2(mirando * 22.0, -98.0)
 	_chorro.direction = Vector2(mirando, 0.25)
 	# Solo quien tiene náusea ve la tecla que debe machacar, junto a su cabeza.
-	_tecla_e.visible = (nausea > 0 or en_forcejeo()) and is_multiplayer_authority()
+	# También avisa que mantenga E junto a un compa caído para revivirlo.
+	_tecla_e.visible = (nausea > 0 or en_forcejeo() or (companero_caido() != null and puede_ayudar())) \
+		and is_multiplayer_authority()
 	# En el forcejeo va del lado contrario a la abeja, para no taparla ni quedar bajo el nombre.
 	_tecla_e.position = Vector2(-mirando * 60, -90) if en_forcejeo() else Vector2(54, -120)
 	var en_torre := apoyo_id != 0 or _torre().encima(self) != null
+	_barra_revivir.visible = caido
+	_barra_revivir.value = reanimacion
+	_texto_revivir.visible = caido
+	_texto_revivir.text = "Reanimando · %d%%" % roundi(reanimacion * 100) if reanimacion > 0 else "Mantén %s para revivir" % Controles.tecla("agarrar")
 	# Tu nombre y vida ya están en tu tarjeta; sobre los demás, solo nombre y vida.
 	etiqueta.visible = not is_multiplayer_authority()
 	etiqueta.text = "%s · %d" % [nombre, vida]
@@ -474,7 +539,7 @@ func _actualizar_animacion(delta: float) -> void:
 	_estaba_tirado = tirado
 	_anim_levantar -= delta
 
-	var cargando := _torre().encima(self) != null
+	var cargando := _torre().encima(self) != null or en_rescate()
 	var animacion := "quieto"
 	if caido or noqueado():
 		animacion = "caido"
@@ -540,8 +605,9 @@ func _ataque_hombros(cargando: bool) -> String:
 
 
 ## Todos se dibujan del mismo tamaño. El que va arriba se baja lo necesario para
-## que su cadera (fila 71 del cuadro sentado) quede detrás de la cabeza del de
-## abajo (fila 55), con el torso asomando por encima. Medido con los cuadros normalizados.
+## Las piernas del de arriba las dibuja quien lo carga; el de arriba no trae piernas
+## (herramientas/cortar_piernas_jinete.py) y su cadera queda detrás de la cabeza del de
+## abajo, con el torso asomando por encima (ALTURA_HOMBROS en torre.gd).
 func _ajustar_postura_hombros() -> void:
 	sprite.position = Vector2.ZERO
 	sprite.scale = Vector2.ONE * ESCALA_SPRITE
@@ -592,13 +658,16 @@ func golpear(dir: int, tipo := 0) -> void:
 		return
 	if dir not in [-1, 1] or tipo < 0 or tipo > 3 or _espera_servidor > 0.0 or not puede_actuar():
 		return
+	# Repetir un puño exige recoger el brazo; alternar mantiene el combo rápido.
+	if tipo == _ultimo_tipo and _repeticion > 0.0:
+		return
 	# Los ataques nuevos requieren equilibrio; la torre conserva sus puños coordinados.
 	if tipo != 0 and (apoyo_id != 0 or _torre().encima(self) != null or _pieza_cargada() != null):
 		_avisar_bebida.rpc("E/Y: baja o suelta lo que cargas para usar el combo")
 		return
 	if _golpe_pendiente >= 0 or not _cola_golpes.is_empty() or _recuperacion > 0:
 		# Guardar una secuencia corta, sin sobrescribir un contacto que aún no ocurrió.
-		if _cola_golpes.size() < 3:
+		if _cola_golpes.size() < 3 and (_cola_golpes.is_empty() or _cola_golpes.back().tipo != tipo):
 			_cola_golpes.append({"dir": dir, "tipo": tipo})
 		return
 	_iniciar_golpe(dir, tipo)
@@ -618,6 +687,8 @@ func _iniciar_golpe(dir: int, tipo: int) -> void:
 	_tipo_golpe = tipo
 	_golpe_pendiente = combo.IMPACTOS[tipo]
 	_recuperacion = ENTRE_GOLPES
+	_ultimo_tipo = tipo
+	_repeticion = 0.30
 	_mostrar_golpe.rpc(dir, tipo)
 
 
@@ -651,6 +722,8 @@ func _actualizar_golpe(delta: float) -> void:
 	var nivel := _nivel_golpe
 	# Una botella anterior puede impactar durante la preparación del puñetazo.
 	_dano_ataque = roundi([10, 15, 22, 30][nivel] * combo.MULTIPLICADORES[_tipo_golpe])
+	if arma_tiempo > 0:
+		_dano_ataque = roundi(_dano_ataque * 1.5)
 	var objetivo_combo: Node2D = null
 	for cosa: Node2D in get_tree().get_nodes_in_group("golpeables"):
 		if combo.enemigo_valido(cosa) and _alcanza(cosa.global_position, dir, cosa.ancho) and _mas_cerca(cosa, objetivo_combo):
@@ -667,6 +740,8 @@ func _actualizar_golpe(delta: float) -> void:
 				combo.mostrar_impacto.rpc(otro.global_position - Vector2(0, otro.altura + 60), _tipo_golpe, false)
 	# Enemigos y cosas del escenario (abejas, jefe, olla, oseznos).
 	for cosa: Node2D in get_tree().get_nodes_in_group("golpeables"):
+		if cosa.is_in_group("jefe") and cosa.fase == 4 and not cosa.puede_recibir_golpe():
+			continue
 		if _alcanza(cosa.global_position, dir, cosa.ancho):
 			var normal := _dano_ataque
 			var final_combo: bool = critico and cosa == objetivo_combo
@@ -811,7 +886,15 @@ func _mostrar_dano() -> void:
 ## entregar la que ya carga.
 @rpc("any_peer", "call_remote", "reliable")
 func pedir_agarrar() -> void:
-	if not multiplayer.is_server() or not _lo_pide_su_dueno() or not puede_actuar():
+	if not multiplayer.is_server() or not _lo_pide_su_dueno():
+		return
+	var fogata := get_tree().get_first_node_in_group("fogata_cooperativa")
+	if en_fogata():
+		fogata.salir(name.to_int())
+		return
+	if not puede_actuar():
+		return
+	if _partida().rescate.interactuar(self):
 		return
 	if apoyo_id != 0:
 		_torre().bajar(self, false)
@@ -830,6 +913,8 @@ func pedir_agarrar() -> void:
 		if not (estacion and estacion.intentar_entregar(cargada, position)):
 			cargada.soltar(position)
 		return
+	if fogata != null and fogata.interactuar(self):
+		return
 	var cerca: Node2D = null
 	for pieza: Node2D in get_tree().get_nodes_in_group("piezas"):
 		if pieza.portador == 0 and not pieza.entregada and _mas_cerca(pieza, cerca):
@@ -837,6 +922,9 @@ func pedir_agarrar() -> void:
 	if cerca and position.distance_to(cerca.position) <= ALCANCE_AGARRAR:
 		cerca.agarrar(name.to_int())
 		return
+	for arma in get_tree().get_nodes_in_group("armas_temporales"):
+		if arma.recoger(self):
+			return
 	for cerveza in get_tree().get_nodes_in_group("cervezas"):
 		if cerveza.recoger(self):
 			return
@@ -845,16 +933,22 @@ func pedir_agarrar() -> void:
 func _perder_vida(dano: int) -> void:
 	if not multiplayer.is_server() or dano <= 0:
 		return
+	if en_rescate():
+		_partida().rescate.cancelar()
 	combo.reiniciar()
 	_cancelar_golpes()
 	# Argumento de prueba: los jugadores casi no reciben daño, para poder ver
 	# una pelea completa jugada por bots.
 	if "--aguantan" in OS.get_cmdline_user_args():
 		dano = maxi(dano / 8, 1)
+	var fogata := get_tree().get_first_node_in_group("fogata_cooperativa")
+	if fogata != null:
+		fogata.salir(name.to_int())
 	vida = maxi(vida - dano, 0)
 	if vida > 0:
 		return
 	caido = true
+	arma_tiempo = 0.0
 	nausea = 0.0
 	arcadas = 0
 	bebiendo = 0.0
@@ -938,6 +1032,11 @@ func _controlar_hombros() -> void:
 	_vel_altura = 0.0
 	if not puede_actuar():
 		return
+	if not _bot.is_empty() and not _partida().rescate.listo():
+		return # Espera la E del humano; el rescate envía el equilibrio del bot.
+	if _bot == "mision":
+		pedir_bajar_hombros.rpc_id(1, false)
+		return
 	if _bot == "torre":
 		if not _bot_osa_presente():
 			# Ya no hay pelea: se baja solo para seguir ayudando con la misión.
@@ -950,7 +1049,13 @@ func _controlar_hombros() -> void:
 		_bot_acompanar_golpe()
 		return
 	var salto := Input.is_action_just_pressed("saltar")
-	if salto or Input.is_action_just_pressed("agarrar"):
+	if Input.is_action_just_pressed("agarrar"):
+		if multiplayer.is_server():
+			pedir_agarrar()
+		else:
+			pedir_agarrar.rpc_id(1)
+		return
+	if salto:
 		if multiplayer.is_server():
 			pedir_bajar_hombros(salto)
 		else:
@@ -995,7 +1100,7 @@ class TeclaE extends Node2D:
 		draw_rect(Rect2(-12, -9, 24, 24), Color(0.08, 0.08, 0.1))
 		draw_rect(Rect2(-11, -12 + baja, 22, 22), Color(0.08, 0.08, 0.1))
 		draw_rect(Rect2(-9, -10 + baja, 18, 18), Color("b8bcc8") if apretada else Color("f2f4f8"))
-		draw_string(ThemeDB.fallback_font, Vector2(-5, 5 + baja), "E", HORIZONTAL_ALIGNMENT_LEFT, -1, 15,
+		draw_string(ThemeDB.fallback_font, Vector2(-5, 5 + baja), Controles.tecla("agarrar"), HORIZONTAL_ALIGNMENT_LEFT, -1, 15,
 			Color(0.1, 0.1, 0.12))
 
 
@@ -1047,6 +1152,11 @@ func nadando() -> bool:
 
 # Ondas en el agua alrededor del que nada, a la altura de la cintura.
 func _draw() -> void:
+	if arma_tiempo > 0 and not caido and not en_forcejeo() and not en_fogata() and not nadando():
+		var mano := Vector2(mirando * (44.0 if _anim_golpe > 0 else 24.0), -altura - 62.0)
+		var punta := mano + Vector2(mirando * 24.0, -12.0)
+		draw_line(mano, punta, Color("2b160b"), 8)
+		draw_line(mano, punta, Color("ffcf33"), 4)
 	if _apuntando_botella:
 		_dibujar_trayectoria()
 	if _hundido <= 0.0:
@@ -1062,7 +1172,17 @@ func puede_actuar() -> bool:
 	# Nadando solo se puede mover: ni golpear, ni rodar, ni tomar, ni lanzar.
 	return not caido and bebiendo <= 0 and dormido <= 0 and vomitando <= 0 \
 		and rodando <= 0 and aturdimiento <= 0 and not _partida().finalizada and not nadando() \
-		and nausea <= 0 and not combate.volando and not en_forcejeo()
+		and nausea <= 0 and not combate.volando and not en_forcejeo() and not en_fogata() and not en_rescate()
+
+
+func en_rescate() -> bool:
+	var rescate := get_tree().get_first_node_in_group("rescate_oseznos")
+	return rescate != null and rescate.contiene(name.to_int())
+
+
+func en_fogata() -> bool:
+	var fogata := get_tree().get_first_node_in_group("fogata_cooperativa")
+	return fogata != null and fogata.dentro(name.to_int())
 
 
 func en_forcejeo() -> bool:
@@ -1083,10 +1203,15 @@ func es_invulnerable() -> bool:
 
 
 func companero_caido() -> Node2D:
+	var mejor: Node2D = null
 	for otro in get_tree().get_nodes_in_group("jugadores"):
-		if otro != self and otro.caido and position.distance_to(otro.position) <= RADIO_REVIVIR:
-			return otro
-	return null
+		if otro == self or not otro.caido:
+			continue
+		var d: Vector2 = (otro.position - position).abs()
+		if d.x <= RADIO_REVIVIR.x and d.y <= RADIO_REVIVIR.y \
+				and (mejor == null or position.distance_to(otro.position) < position.distance_to(mejor.position)):
+			mejor = otro
+	return mejor
 
 
 func puede_ayudar() -> bool:
@@ -1126,7 +1251,7 @@ func texto_estado() -> String:
 
 
 func aviso_bebida() -> String:
-	return _aviso_bebida if _tiempo_aviso_bebida > 0 else ""
+	return Controles.indicaciones(_aviso_bebida) if _tiempo_aviso_bebida > 0 else ""
 
 
 @rpc("any_peer", "call_local", "reliable")
@@ -1180,6 +1305,11 @@ func pedir_lanzar(fuerza := 0.0) -> void:
 
 
 func cancelar_entrada_pausa() -> void:
+	var fogata := get_tree().get_first_node_in_group("fogata_cooperativa")
+	if fogata != null:
+		fogata.limpiar_gesto(name.to_int())
+		if is_multiplayer_authority():
+			fogata.vista.cancelar_arrastre()
 	# Soltar R dentro del menú no debe lanzar una botella ni dejar el apuntado atascado.
 	manteniendo = false
 	_apuntando_botella = false
@@ -1456,6 +1586,10 @@ func _bot_mision(delta: float) -> Dictionary:
 	var estacion: Node2D = get_tree().get_first_node_in_group("estacion")
 	if estacion == null or "--bot-flojo" in OS.get_cmdline_user_args() and estacion.terminada:
 		return orden
+	if not _partida().rescate.listo():
+		return _bot_rescate(delta)
+	if not estacion.fogata.encendida and _pieza_cargada() == null:
+		return _bot_palos(estacion)
 	if estacion.alimentados:
 		# Misión cumplida: a pelear contra el jefe.
 		var jefe: Node2D = get_tree().get_first_node_in_group("jefe")
@@ -1503,3 +1637,90 @@ func _bot_mision(delta: float) -> Dictionary:
 		_bot_lado = Vector2(0.0, [-1.0, 1.0].pick_random()) if absf(d.x) > absf(d.y) else Vector2([-1.0, 1.0].pick_random(), 0.0)
 	orden.dir = _bot_lado if _bot_desvio > 0.3 else d.normalized()
 	return orden
+
+
+func _bot_rescate(delta: float) -> Dictionary:
+	var r: Node = _partida().rescate
+	var orden := {"dir": Vector2.ZERO, "pega": false, "agarra": false, "mantiene": false, "salta": false}
+	if r.cebo:
+		var humano := get_node_or_null("../1")
+		if humano != null and humano.position.distance_to(r.lugar()) < r.RADIO:
+			return _bot_torre(delta)
+		return orden
+	var miel: Node2D = null
+	for pieza in get_tree().get_nodes_in_group("piezas"):
+		if pieza.tipo == "miel":
+			miel = pieza
+	if miel == null or (miel.portador != 0 and miel.portador != name.to_int()):
+		return orden
+	var destino: Vector2 = r.lugar() if miel.portador == name.to_int() else miel.position
+	var diferencia := destino - position
+	if diferencia.length() <= 28:
+		if _bot_espera <= 0:
+			orden.agarra = true
+			_bot_espera = 0.6
+	else:
+		if _bot_desvio <= 0 and get_real_velocity().length() < 20:
+			_bot_desvio = 0.7
+			_bot_lado = Vector2(0, -1 if _bot_turno % 2 == 0 else 1)
+		orden.dir = _bot_lado if _bot_desvio > 0.3 else diferencia.normalized()
+	return orden
+
+
+func _bot_palos(estacion: Node2D) -> Dictionary:
+	var orden := {"dir": Vector2.ZERO, "pega": false, "agarra": false, "mantiene": false}
+	var f: Node2D = estacion.fogata
+	var destino: Vector2 = estacion.position + Vector2(-45, 15)
+	var arbol: Node2D = null
+	if f.cantidad(name.to_int()) < 2 and f.colocados < 2 and (not f.suelo.is_empty() or f.faltan_palos()):
+		var mejor := INF
+		for punto in f.suelo.values():
+			var d := position.distance_to(punto)
+			if d < mejor:
+				mejor = d
+				destino = punto
+		if mejor == INF and f.faltan_palos():
+			for candidato in get_tree().get_nodes_in_group("arboles_con_palos"):
+				var d := position.distance_to(candidato.position)
+				if d < mejor:
+					mejor = d
+					arbol = candidato
+			if arbol != null:
+				destino = arbol.position + Vector2(-48, 10)
+	elif f.colocados == 2 and _bot_turno > 1:
+		# Un solo bot toma un papel; el otro queda libre para que pruebe el humano.
+		return orden
+	var d := destino - position
+	if d.length() < 35:
+		if arbol != null:
+			mirando = 1
+			orden.pega = true
+		elif _bot_espera <= 0:
+			_bot_espera = 0.5
+			orden.agarra = true
+	else:
+		if _bot_desvio <= 0 and get_real_velocity().length() < 20:
+			_bot_desvio = 0.7
+			_bot_lado = Vector2(0, -1 if _bot_turno % 2 == 0 else 1)
+		orden.dir = _bot_lado if _bot_desvio > 0.3 else d.normalized()
+	return orden
+
+
+func _bot_fogata(delta: float) -> void:
+	_bot_espera -= delta
+	if _bot_espera > 0:
+		return
+	_bot_espera = 0.06
+	var f := get_tree().get_first_node_in_group("fogata_cooperativa")
+	var rol: int = f.participantes.find(name.to_int())
+	if rol < 0:
+		return
+	var signo := 1 if int((f.TIEMPO - f.tiempo) / f.COMPAS) % 2 == 0 else -1
+	# Los dos frotan en horizontal; el segundo, en sentido contrario.
+	# También acomoda los brazos sobre el palo si se le tambalean.
+	var acomodo := clampf(-float(f.derivas[rol]) * 60.0, -15.0, 15.0)
+	var movimiento := Vector2(signo * 30 * (1 if rol == 0 else -1), acomodo)
+	if multiplayer.is_server():
+		f.mover(f.encuentro, movimiento, true)
+	else:
+		f.mover.rpc_id(1, f.encuentro, movimiento, true)

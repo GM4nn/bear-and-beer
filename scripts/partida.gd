@@ -20,8 +20,10 @@ var estadisticas: Dictionary = {}
 var _todos_caidos := 0.0
 var _numero_charco := 0
 var _numero_botella := 0
+var _numero_arma := 0
 var torre: Node
 var abeja_musculosa: Node2D
+var rescate: Node2D
 
 
 func _ready() -> void:
@@ -32,6 +34,9 @@ func _ready() -> void:
 	abeja_musculosa = preload("res://scripts/abeja_musculosa.gd").new()
 	abeja_musculosa.name = "AbejaMusculosa"
 	get_parent().get_node("Mundo").add_child(abeja_musculosa)
+	rescate = preload("res://scripts/rescate_oseznos.gd").new()
+	rescate.name = "RescateOseznos"
+	get_parent().get_node("Mundo").add_child(rescate)
 	for i in SUMINISTROS.size():
 		var cerveza := CERVEZA.new()
 		cerveza.name = "Cerveza%d" % i
@@ -77,6 +82,7 @@ func _physics_process(delta: float) -> void:
 func terminar(gano: bool) -> void:
 	if multiplayer.is_server() and not finalizada:
 		abeja_musculosa.cancelar()
+		rescate.cancelar()
 		_cerrar.rpc(gano, estadisticas.values())
 
 
@@ -140,3 +146,18 @@ func quitar_charco(nombre_charco: String) -> void:
 	var charco := get_parent().get_node("Mundo").get_node_or_null(nombre_charco)
 	if charco:
 		charco.queue_free()
+
+
+func soltar_arma(donde: Vector2) -> void:
+	if not multiplayer.is_server() or finalizada:
+		return
+	_numero_arma += 1
+	_crear_arma.rpc(_numero_arma, donde)
+
+
+@rpc("authority", "call_local", "reliable")
+func _crear_arma(numero: int, donde: Vector2) -> void:
+	var arma := preload("res://scripts/arma_temporal.gd").new()
+	arma.name = "Aguijon%d" % numero
+	arma.position = donde
+	get_parent().get_node("Mundo").add_child(arma)

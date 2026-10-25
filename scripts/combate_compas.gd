@@ -132,7 +132,7 @@ func _physics_process(delta: float) -> void:
 		_cancelar.rpc()
 		return
 	var oso: Node2D = get_tree().get_first_node_in_group("jefe")
-	if oso == null or not oso.activa or oso.estado in ["llegando", "lago", "derrotada"]:
+	if oso == null or not oso.puede_recibir_golpe():
 		return
 	var d: Vector2 = oso.position - j.position
 	if absf(d.x) > oso.ancho + 18 or absf(d.y) > 32 or j.altura < oso.altura - 30 or j.altura > oso.altura + oso.alto_botella:

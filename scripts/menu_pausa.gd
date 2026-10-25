@@ -1,6 +1,8 @@
 extends CanvasLayer
 ## Interfaz que sigue respondiendo mientras el mundo está detenido.
 
+signal guardar
+signal controles
 signal resumir
 signal terminar
 signal volver_lobby
@@ -11,6 +13,7 @@ var menu: VBoxContainer
 var opciones: VBoxContainer
 var boton_resumir: Button
 var boton_lobby: Button
+var boton_guardar: Button
 var pantalla: CheckButton
 var volumen: HSlider
 var detalle: Label
@@ -53,9 +56,12 @@ func _ready() -> void:
 	mision.custom_minimum_size.x = 380
 	boton_resumir = _boton(menu, "Resumir", func(): resumir.emit())
 	_boton(menu, "Opciones", abrir_opciones)
+	boton_guardar = _boton(menu, "Guardar partida", func(): guardar.emit())
 	_boton(menu, "Terminar partida", func(): terminar.emit())
 	boton_lobby = _boton(menu, "Volver al lobby", func(): volver_lobby.emit())
 	detalle = _texto(menu, "", 14)
+	detalle.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	detalle.custom_minimum_size.x = 380
 	opciones = VBoxContainer.new()
 	opciones.add_theme_constant_override("separation", 14)
 	contenido.add_child(opciones)
@@ -72,10 +78,7 @@ func _ready() -> void:
 	opciones.add_child(volumen)
 	volumen.value_changed.connect(func(valor): volumen_cambiado.emit(valor))
 	Audio.agregar_deslizadores(opciones, volumen.get_index() + 1)
-	var titulo_controles := _texto(opciones, "Controles", 18)
-	titulo_controles.add_theme_font_override("font", TemaUI.fuente("bold"))
-	titulo_controles.add_theme_color_override("font_color", Color("ffd36b"))
-	_texto(opciones, TemaUI.CONTROLES, 13)
+	_boton(opciones, "Ver y modificar controles", func(): controles.emit())
 	_boton(opciones, "Volver", volver)
 	_texto(contenido, "↑ ↓ Elegir   ·   Enter Aceptar   ·   Esc Volver", 14)
 	opciones.hide()
@@ -103,6 +106,8 @@ func _boton(padre: Node, texto: String, accion: Callable) -> Button:
 
 func abrir(anfitrion: bool, nombre: String) -> void:
 	subtitulo.text = "Partida pausada por %s" % nombre
+	boton_guardar.disabled = not anfitrion
+	boton_guardar.tooltip_text = "Guarda el anfitrión en su computadora"
 	boton_lobby.disabled = not anfitrion
 	detalle.text = ("Terminar cierra la sesión para todos.\nVolver al lobby conserva el grupo." if anfitrion
 		else "Terminar te lleva al menú principal.\nEl anfitrión puede volver al lobby con el grupo.")

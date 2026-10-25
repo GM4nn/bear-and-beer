@@ -11,7 +11,9 @@ const FUERZA_ABEJA := 0.085
 const FUERZA_PULSACION := 0.065
 const INTERVALO_PULSACION := 0.075
 const SEPARACION := 84.0
-const VIDA_MAX := 60
+const VIDA_MAX := 180
+const REPOSO_FUSION := 12.0
+const GRUPOS_GARANTIA := 2
 ## Combos de boxeo (jab + recto) antes de cada forcejeo.
 const GOLPES_ANTES := 3
 const DURACION_GOLPE := 0.9
@@ -47,6 +49,9 @@ const ESTRELLAS := preload("res://scripts/mama_osa.gd")
 
 var estado := "inactiva"
 var bajas := 0
+var _reposo := 0.0
+var _grupos_sin_fusion := 0
+var _premio_entregado := false
 var contendiente := 0
 var noqueado := 0
 var encuentro := 0
@@ -146,13 +151,17 @@ func registrar_baja(sitio: Vector2) -> void:
 	if _bajas_recientes.size() < 3:
 		return
 	# Los grupos se consumen incluso con una musculosa activa: no se acumulan emboscadas.
-	if estado == "inactiva" and azar.randf() < PROBABILIDAD:
-		_fusionar.rpc(_bajas_recientes, encuentro + 1)
+	if estado == "inactiva" and _reposo <= 0:
+		_grupos_sin_fusion += 1
+		if azar.randf() < PROBABILIDAD or _grupos_sin_fusion >= GRUPOS_GARANTIA:
+			_grupos_sin_fusion = 0
+			_fusionar.rpc(_bajas_recientes, encuentro + 1)
 	_bajas_recientes.clear()
 
 
 @rpc("authority", "call_local", "reliable")
 func _fusionar(desde: PackedVector2Array, numero: int) -> void:
+	_premio_entregado = false
 	origenes = desde
 	position = desde[2]
 	estado = "fusion"
@@ -179,6 +188,7 @@ func _physics_process(delta: float) -> void:
 	if _partida().finalizada:
 		cancelar()
 		return
+	_reposo = maxf(_reposo - delta, 0.0)
 	tiempo += delta
 	caminando = false
 	if estado in ["buscando", "golpeando"]:
@@ -292,7 +302,7 @@ func _oso() -> Node2D:
 
 
 func _osa_disponible(oso: Node2D, ya_peleando := false) -> bool:
-	if oso == null or not oso.activa or estado not in ACTIVOS:
+	if oso == null or not oso.activa or oso.fase == 4 or estado not in ACTIVOS:
 		return false
 	return oso.estado == "rivalidad" if ya_peleando else oso.estado not in NO_PROVOCAR
 
@@ -449,6 +459,11 @@ func _resolver(resultado: String) -> void:
 			var castigado := _jugador(noqueado)
 			if castigado:
 				castigado.proteccion = maxf(castigado.proteccion, 1.0)
+			if not _premio_entregado:
+				_premio_entregado = true
+				_partida().soltar_arma(global_position)
+			_reposo = REPOSO_FUSION
+			_bajas_recientes.clear()
 			vida = 0
 			noqueado = 0
 			_soltar.rpc("muriendo")

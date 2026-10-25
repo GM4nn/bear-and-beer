@@ -50,6 +50,11 @@ func _probar() -> void:
 	_comprobar(pieza.portador == 1 and pieza._sprite.texture != null and not pieza.get_node("Visual/Color").visible,
 		"Recoger una pieza muestra su sprite en las manos")
 	await _foto("cargando")
+	# El encendido se prueba en fogata_red.gd; aquí se revisan los sprites posteriores.
+	main.juego.get_node("Partida").rescate.rescatados = 2
+	e.fogata.encendida = true
+	e.fogata.colocados = 2
+	e.fogata._publicar()
 	for p in piezas:
 		e.intentar_entregar(p, e.position)
 	await _esperar(0.1)

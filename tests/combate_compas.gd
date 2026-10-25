@@ -187,7 +187,7 @@ class Prueba extends Node:
 		Input.action_press("lanzar")
 		await _esperar(0.05)
 		Input.action_release("lanzar")
-		_comprobar(compa.apoyo_id == 0 and compa.combate.volando and compa.altura > 55,
+		_comprobar(compa.apoyo_id == 0 and compa.combate.volando and compa.altura > host._torre().ALTURA_HOMBROS,
 			"R también lanza al pasajero desde los hombros y deshace su apoyo")
 		main.juego.get_node("Partida").terminar(false)
 		await _esperar(0.1)

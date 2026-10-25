@@ -3,6 +3,7 @@ extends Node2D
 
 const RUTA := "res://arte/zona1/%s.png"
 const ATARDECER := preload("res://arte/zona1/atardecer.gdshader")
+const ARTE := preload("res://scripts/arte_objetos.gd")
 ## Luz de atardecer en el bosque. Apagada: el usuario prefiere la luz de tarde
 ## original. Con true vuelven el filtro cálido y el lago malva.
 const ATARDECER_ACTIVO := false
@@ -16,6 +17,8 @@ var _azar := RandomNumberGenerator.new()
 var _rayos: Array[Polygon2D] = []
 ## Árboles que se reparten (los del panal conservan el original).
 const ARBOLES := ["arbol2", "arbol_encino", "arbol_pino", "arbol_jacaranda"]
+## Especies de los árboles sin panal de la fila de la orilla, por turnos.
+const ARBOLES_FILA := ["arbol_encino", "arbol_pino", "arbol_jacaranda"]
 ## Ancho del mundo que se decora (un poco más que los límites de la cámara).
 const ANCHO_MUNDO := 7400.0
 ## Altura media de la orilla del bosque: arriba de ella ya no se camina.
@@ -35,18 +38,17 @@ func _ready() -> void:
 	_poner_rayos()
 	_poner_orilla()
 	_poner_limite_arriba()
+	# Los árboles van en el claro (bosque.tscn), parejos: uno arriba y otro abajo
+	# del camino, alternando sin panal y con panal; los sin panal rotan de especie.
+	var lisos := $Mundo.get_children().filter(func(o): return str(o.name).begins_with("Arbol") and not str(o.name).contains("Panal"))
+	lisos.sort_custom(func(a, b): return a.position.x < b.position.x)
 	for objeto in $Mundo.get_children():
 		var nombre := str(objeto.name)
 		if nombre.begins_with("Arbol"):
-			# Los árboles de la fila de atrás se pegan a la orilla del bosque para
-			# dejar libre el claro. Los del panal se quedan donde viven sus abejas.
-			var de_atras: bool = objeto.position.y < 480
-			if de_atras and not nombre.contains("Panal"):
-				objeto.position.y = orilla_bosque(objeto.position.x) + 26
-			var numero := nombre.to_int()
-			var imagen: String = "arbol2" if nombre.contains("Panal") else ARBOLES[numero % ARBOLES.size()]
-			var arbol := _vestir(objeto, imagen, 3 if de_atras else 2)
-			arbol.flip_h = numero % 2 == 0
+			var panal := nombre.contains("Panal")
+			var imagen: String = "arbol2" if panal else ARBOLES_FILA[lisos.find(objeto) % ARBOLES_FILA.size()]
+			var arbol := _vestir(objeto, imagen, 3)
+			arbol.flip_h = int(objeto.position.x / 406.0) % 2 == 0
 			_arboles.append(arbol)
 		elif nombre.begins_with("Roca"):
 			_vestir(objeto, ["roca", "roca2", "roca3"][nombre.to_int() % 3], 2)
@@ -129,17 +131,18 @@ func _poner_rayos() -> void:
 # Matas a lo largo de la orilla ondulada: tapan el borde de arriba del piso y
 # el pie del muro de árboles. Cada mata sigue la altura de la orilla en su x.
 func _poner_orilla() -> void:
-	var texturas: Array[Texture2D] = [load(RUTA % "arbustos"), load(RUTA % "arbustos2")]
+	var finas := [ARTE.hd(RUTA % "arbustos"), ARTE.hd(RUTA % "arbustos2")]
 	var x := -300.0
 	var i := 0
 	while x < ANCHO_MUNDO + 300.0:
 		var mata := Sprite2D.new()
-		mata.texture = texturas[i % 2]
+		var fina: Array = finas[i % 2]
+		mata.texture = fina[0]
 		mata.material = _luz_calida
 		mata.centered = false
-		mata.scale = Vector2(2, 2)
+		ARTE.escalar(mata, 2.0 / fina[1])
 		mata.flip_h = _azar.randf() < 0.5
-		var alto := mata.texture.get_height() * 2.0
+		var alto := mata.texture.get_height() * mata.scale.y
 		mata.position = Vector2(x, orilla_bosque(x + 256.0) + 22.0 - alto)
 		$Suelo.add_child(mata)
 		x += _azar.randf_range(300, 420)
@@ -174,12 +177,6 @@ func _poner_adornos() -> void:
 	_adorno("hamaca", Vector2(980, orilla_bosque(980) + 30), 2)
 	_adorno("troca", Vector2(2380, orilla_bosque(2380) + 34), 2)
 	_adorno("sillas", Vector2(2600, orilla_bosque(2600) + 40), 2, true)
-	# Árboles de adorno en la orilla, entre los que tienen colisión.
-	var x := 40.0
-	while x < ANCHO_MUNDO:
-		var arbol := _adorno(ARBOLES[_azar.randi() % ARBOLES.size()], Vector2(x, orilla_bosque(x) + 10), 3, _azar.randf() < 0.5)
-		_arboles.append(arbol)
-		x += _azar.randf_range(330, 560)
 	# Nopales y magueyes: casi todos en la orilla y algunos sueltos en el claro.
 	for n in 46:
 		var px := _azar.randf_range(0, ANCHO_MUNDO)
@@ -212,9 +209,10 @@ func _sobre_camino_o_lago(x: float, y: float, margen: float) -> bool:
 # Un dibujo suelto con la base en `pie`. En Mundo se ordena por profundidad.
 func _adorno(imagen: String, pie: Vector2, escala: float, volteado := false, padre: Node = null) -> Sprite2D:
 	var dibujo := Sprite2D.new()
-	dibujo.texture = load(RUTA % imagen)
+	var fina := ARTE.hd(RUTA % imagen)
+	dibujo.texture = fina[0]
 	dibujo.material = _luz_calida
-	dibujo.scale = Vector2.ONE * escala
+	ARTE.escalar(dibujo, escala / fina[1])
 	dibujo.flip_h = volteado
 	var limites := dibujo.texture.get_image().get_used_rect()
 	dibujo.centered = false
@@ -286,13 +284,14 @@ func _colores_lago_atardecer(material: ShaderMaterial) -> void:
 
 # Tulares en las esquinas de las dos playitas.
 func _poner_tulares() -> void:
-	var textura: Texture2D = load(RUTA % "tular")
+	var fina := ARTE.hd(RUTA % "tular")
+	var textura: Texture2D = fina[0]
 	for lado: float in [-1.0, 1.0]:
 		for arriba: bool in [true, false]:
 			var tular := Sprite2D.new()
 			tular.texture = textura
 			tular.material = _luz_calida
-			tular.scale = Vector2(2, 2)
+			ARTE.escalar(tular, 2.0 / fina[1])
 			tular.flip_h = lado > 0.0
 			tular.offset.y = -textura.get_height() * 0.5
 			var x := _centro_lago.x + lado * (_radio_lago.x + (40.0 if arriba else 10.0))
@@ -333,7 +332,9 @@ func _capa(nombre_capa: String, imagen: String, ritmo: float, escala: float, alt
 	capa.name = nombre_capa
 	capa.scroll_scale = Vector2(ritmo, 1)
 	capa.z_index = profundidad
-	var textura: Texture2D = load(RUTA % imagen)
+	var fina := ARTE.hd(RUTA % imagen)
+	var textura: Texture2D = fina[0]
+	escala /= fina[1]
 	var luz := _material_atardecer(0 if imagen == "montanas" else 1)
 	if imagen == "montanas":
 		# El generador dejó margen gris lateral: usar solo el paisaje del atlas.
@@ -349,7 +350,7 @@ func _capa(nombre_capa: String, imagen: String, ritmo: float, escala: float, alt
 		fondo.texture = textura
 		fondo.material = luz
 		fondo.centered = false
-		fondo.scale = Vector2.ONE * escala
+		ARTE.escalar(fondo, escala)
 		fondo.position = Vector2(lado * ancho, alto)
 		fondo.flip_h = lado == 1
 		capa.add_child(fondo)
@@ -371,9 +372,10 @@ func _vestir(objeto: Node2D, imagen: String, escala: float) -> Sprite2D:
 			hijo.hide()
 	var dibujo := Sprite2D.new()
 	dibujo.name = "Arte"
-	dibujo.texture = load(RUTA % imagen)
+	var fina := ARTE.hd(RUTA % imagen)
+	dibujo.texture = fina[0]
 	dibujo.material = _luz_calida
-	dibujo.scale = Vector2.ONE * escala
+	ARTE.escalar(dibujo, escala / fina[1])
 	# Anclar la base visible, aunque el PNG tenga margen transparente.
 	var limites := dibujo.texture.get_image().get_used_rect()
 	dibujo.offset = Vector2(-dibujo.texture.get_width() * 0.5, -limites.end.y)

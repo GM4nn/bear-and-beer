@@ -1,4 +1,4 @@
-[gd_scene load_steps=13 format=3]
+[gd_scene format=3 uid="uid://duysxx5wg53dt"]
 
 [ext_resource type="PackedScene" path="res://escenas/arbol.tscn" id="1"]
 [ext_resource type="PackedScene" path="res://escenas/roca.tscn" id="2"]
@@ -6,8 +6,8 @@
 [ext_resource type="PackedScene" path="res://escenas/estacion.tscn" id="4"]
 [ext_resource type="PackedScene" path="res://escenas/abejas.tscn" id="5"]
 [ext_resource type="PackedScene" path="res://escenas/mama_osa.tscn" id="6"]
-[ext_resource type="Script" path="res://scripts/partida.gd" id="7"]
-[ext_resource type="Script" path="res://scripts/ambientacion.gd" id="8"]
+[ext_resource type="Script" uid="uid://cufmoivbb3qwi" path="res://scripts/partida.gd" id="7"]
+[ext_resource type="Script" uid="uid://mcsw2a6nt476" path="res://scripts/ambientacion.gd" id="8"]
 
 [sub_resource type="RectangleShape2D" id="borde_largo"]
 size = Vector2(8000, 40)
@@ -15,22 +15,22 @@ size = Vector2(8000, 40)
 [sub_resource type="RectangleShape2D" id="borde_alto"]
 size = Vector2(40, 800)
 
-[sub_resource type="RectangleShape2D" id="lago"]
-size = Vector2(2000, 150)
-
 [sub_resource type="RectangleShape2D" id="carpa"]
 size = Vector2(130, 16)
 
-[node name="Bosque" type="Node2D"]
+[sub_resource type="RectangleShape2D" id="lago"]
+size = Vector2(2000, 150)
+
+[node name="Bosque" type="Node2D" unique_id=674253747]
 script = ExtResource("8")
 
-[node name="Partida" type="Node" parent="."]
+[node name="Partida" type="Node" parent="." unique_id=36262659]
 script = ExtResource("7")
 
-[node name="Suelo" type="Node2D" parent="."]
+[node name="Suelo" type="Node2D" parent="." unique_id=868240158]
 z_index = -10
 
-[node name="BosqueLejano" type="ColorRect" parent="Suelo"]
+[node name="BosqueLejano" type="ColorRect" parent="Suelo" unique_id=331723595]
 offset_left = -2000.0
 offset_top = -2000.0
 offset_right = 9200.0
@@ -38,7 +38,7 @@ offset_bottom = 345.0
 mouse_filter = 2
 color = Color(0.07, 0.14, 0.1, 1)
 
-[node name="Pasto" type="ColorRect" parent="Suelo"]
+[node name="Pasto" type="ColorRect" parent="Suelo" unique_id=1619521191]
 offset_left = -2000.0
 offset_top = 345.0
 offset_right = 9200.0
@@ -46,7 +46,7 @@ offset_bottom = 2000.0
 mouse_filter = 2
 color = Color(0.24, 0.4, 0.22, 1)
 
-[node name="Camino" type="ColorRect" parent="Suelo"]
+[node name="Camino" type="ColorRect" parent="Suelo" unique_id=1420866870]
 offset_left = -2000.0
 offset_top = 480.0
 offset_right = 9200.0
@@ -54,52 +54,52 @@ offset_bottom = 565.0
 mouse_filter = 2
 color = Color(0.43, 0.34, 0.23, 1)
 
-[node name="Limites" type="StaticBody2D" parent="."]
+[node name="Limites" type="StaticBody2D" parent="." unique_id=1019250955]
 
-[node name="Arriba" type="CollisionShape2D" parent="Limites"]
+[node name="Arriba" type="CollisionShape2D" parent="Limites" unique_id=1405030959]
 position = Vector2(3600, 325)
 shape = SubResource("borde_largo")
 
-[node name="Abajo" type="CollisionShape2D" parent="Limites"]
+[node name="Abajo" type="CollisionShape2D" parent="Limites" unique_id=1722653973]
 position = Vector2(3600, 715)
 shape = SubResource("borde_largo")
 
-[node name="Izquierda" type="CollisionShape2D" parent="Limites"]
+[node name="Izquierda" type="CollisionShape2D" parent="Limites" unique_id=1941582767]
 position = Vector2(-20, 520)
 shape = SubResource("borde_alto")
 
-[node name="Derecha" type="CollisionShape2D" parent="Limites"]
+[node name="Derecha" type="CollisionShape2D" parent="Limites" unique_id=374254572]
 position = Vector2(7220, 520)
 shape = SubResource("borde_alto")
 
-[node name="Mundo" type="Node2D" parent="."]
+[node name="Mundo" type="Node2D" parent="." unique_id=1232680570]
 y_sort_enabled = true
 
-[node name="Jugadores" type="Node2D" parent="Mundo"]
+[node name="Jugadores" type="Node2D" parent="Mundo" unique_id=1235089291]
 y_sort_enabled = true
 
-[node name="Carpa" type="StaticBody2D" parent="Mundo"]
+[node name="Carpa" type="StaticBody2D" parent="Mundo" unique_id=1483127837]
 position = Vector2(230, 440)
 
-[node name="Forma" type="CollisionShape2D" parent="Mundo/Carpa"]
+[node name="Forma" type="CollisionShape2D" parent="Mundo/Carpa" unique_id=1999582646]
 position = Vector2(0, -8)
 shape = SubResource("carpa")
 
-[node name="Tela" type="ColorRect" parent="Mundo/Carpa"]
+[node name="Tela" type="ColorRect" parent="Mundo/Carpa" unique_id=687582153]
 offset_left = -70.0
 offset_top = -90.0
 offset_right = 70.0
 mouse_filter = 2
 color = Color(0.8, 0.45, 0.2, 1)
 
-[node name="Puerta" type="ColorRect" parent="Mundo/Carpa"]
+[node name="Puerta" type="ColorRect" parent="Mundo/Carpa" unique_id=594963719]
 offset_left = -18.0
 offset_top = -60.0
 offset_right = 18.0
 mouse_filter = 2
 color = Color(0.25, 0.14, 0.08, 1)
 
-[node name="Texto" type="Label" parent="Mundo/Carpa"]
+[node name="Texto" type="Label" parent="Mundo/Carpa" unique_id=587758482]
 offset_left = -90.0
 offset_top = -122.0
 offset_right = 90.0
@@ -107,17 +107,17 @@ offset_bottom = -96.0
 text = "CAMPAMENTO"
 horizontal_alignment = 1
 
-[node name="Fogata" type="Node2D" parent="Mundo"]
+[node name="Fogata" type="Node2D" parent="Mundo" unique_id=1311714752]
 position = Vector2(430, 445)
 
-[node name="Lena" type="ColorRect" parent="Mundo/Fogata"]
+[node name="Lena" type="ColorRect" parent="Mundo/Fogata" unique_id=182941417]
 offset_left = -20.0
 offset_top = -8.0
 offset_right = 20.0
 mouse_filter = 2
 color = Color(0.3, 0.2, 0.12, 1)
 
-[node name="Fuego" type="ColorRect" parent="Mundo/Fogata"]
+[node name="Fuego" type="ColorRect" parent="Mundo/Fogata" unique_id=748950599]
 offset_left = -10.0
 offset_top = -30.0
 offset_right = 10.0
@@ -125,17 +125,17 @@ offset_bottom = -8.0
 mouse_filter = 2
 color = Color(0.95, 0.55, 0.15, 1)
 
-[node name="HieleraVacia" type="Node2D" parent="Mundo"]
+[node name="HieleraVacia" type="Node2D" parent="Mundo" unique_id=228131124]
 position = Vector2(540, 455)
 
-[node name="Caja" type="ColorRect" parent="Mundo/HieleraVacia"]
+[node name="Caja" type="ColorRect" parent="Mundo/HieleraVacia" unique_id=1749146877]
 offset_left = -20.0
 offset_top = -22.0
 offset_right = 20.0
 mouse_filter = 2
 color = Color(0.2, 0.45, 0.75, 1)
 
-[node name="Tapa" type="ColorRect" parent="Mundo/HieleraVacia"]
+[node name="Tapa" type="ColorRect" parent="Mundo/HieleraVacia" unique_id=194591128]
 offset_left = -22.0
 offset_top = -28.0
 offset_right = 22.0
@@ -143,17 +143,17 @@ offset_bottom = -22.0
 mouse_filter = 2
 color = Color(0.9, 0.9, 0.9, 1)
 
-[node name="Cartel" type="Node2D" parent="Mundo"]
+[node name="Cartel" type="Node2D" parent="Mundo" unique_id=250948217]
 position = Vector2(3450, 450)
 
-[node name="Poste" type="ColorRect" parent="Mundo/Cartel"]
+[node name="Poste" type="ColorRect" parent="Mundo/Cartel" unique_id=1824377316]
 offset_left = -5.0
 offset_top = -60.0
 offset_right = 5.0
 mouse_filter = 2
 color = Color(0.36, 0.24, 0.14, 1)
 
-[node name="Tabla" type="ColorRect" parent="Mundo/Cartel"]
+[node name="Tabla" type="ColorRect" parent="Mundo/Cartel" unique_id=908486544]
 offset_left = -70.0
 offset_top = -100.0
 offset_right = 70.0
@@ -161,7 +161,7 @@ offset_bottom = -60.0
 mouse_filter = 2
 color = Color(0.55, 0.4, 0.24, 1)
 
-[node name="Texto" type="Label" parent="Mundo/Cartel"]
+[node name="Texto" type="Label" parent="Mundo/Cartel" unique_id=905990525]
 offset_left = -70.0
 offset_top = -100.0
 offset_right = 70.0
@@ -170,53 +170,128 @@ text = "EL LAGO →"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="Arbol1" parent="Mundo" instance=ExtResource("1")]
-position = Vector2(110, 465)
+[node name="Arbol1" parent="Mundo" unique_id=1134509968 instance=ExtResource("1")]
+position = Vector2(1178, 447)
 
-[node name="Arbol7" parent="Mundo" instance=ExtResource("1")]
-position = Vector2(1150, 465)
+[node name="Arbol7" parent="Mundo" unique_id=510934737 instance=ExtResource("1")]
+position = Vector2(1954, 418)
 
-[node name="Arbol10" parent="Mundo" instance=ExtResource("1")]
-position = Vector2(1350, 610)
+[node name="Arbol10" parent="Mundo" unique_id=1309170378 instance=ExtResource("1")]
+position = Vector2(2720, 420)
 
-[node name="Arbol13" parent="Mundo" instance=ExtResource("1")]
-position = Vector2(1900, 465)
+[node name="Arbol19" parent="Mundo" unique_id=1362130126 instance=ExtResource("1")]
+position = Vector2(4260, 451)
 
-[node name="Arbol19" parent="Mundo" instance=ExtResource("1")]
-position = Vector2(2700, 465)
+[node name="Arbol23" parent="Mundo" unique_id=1166816066 instance=ExtResource("1")]
+position = Vector2(5030, 433)
 
-[node name="Arbol23" parent="Mundo" instance=ExtResource("1")]
-position = Vector2(3200, 465)
-
-[node name="Arbol24" parent="Mundo" instance=ExtResource("1")]
-position = Vector2(3300, 660)
-
-[node name="Roca1" parent="Mundo" instance=ExtResource("2")]
+[node name="Roca1" parent="Mundo" unique_id=183125752 instance=ExtResource("2")]
 position = Vector2(780, 475)
 
-[node name="Roca2" parent="Mundo" instance=ExtResource("2")]
-position = Vector2(1250, 535)
+[node name="Roca2" parent="Mundo" unique_id=1343985673 instance=ExtResource("2")]
+position = Vector2(1283, 551)
 
-[node name="Roca3" parent="Mundo" instance=ExtResource("2")]
-position = Vector2(1750, 580)
+[node name="Roca3" parent="Mundo" unique_id=1408658458 instance=ExtResource("2")]
+position = Vector2(1844, 590)
 
-[node name="Roca4" parent="Mundo" instance=ExtResource("2")]
-position = Vector2(2050, 500)
+[node name="Roca4" parent="Mundo" unique_id=2010355366 instance=ExtResource("2")]
+position = Vector2(2075, 482)
 
-[node name="Roca5" parent="Mundo" instance=ExtResource("2")]
+[node name="Roca5" parent="Mundo" unique_id=2078892615 instance=ExtResource("2")]
 position = Vector2(2600, 545)
 
-[node name="Roca6" parent="Mundo" instance=ExtResource("2")]
+[node name="Roca6" parent="Mundo" unique_id=1160192232 instance=ExtResource("2")]
 position = Vector2(3000, 565)
 
-[node name="Lago" type="StaticBody2D" parent="."]
+[node name="ArbolPanal4" parent="Mundo" unique_id=1836823528 instance=ExtResource("1")]
+position = Vector2(6998, 471)
+
+[node name="ArbolPanal" parent="Mundo" unique_id=1594253967 instance=ExtResource("1")]
+position = Vector2(6358, 724)
+
+[node name="Roca7" parent="Mundo" unique_id=1653057165 instance=ExtResource("2")]
+position = Vector2(4150, 520)
+
+[node name="Roca8" parent="Mundo" unique_id=1189125703 instance=ExtResource("2")]
+position = Vector2(5400, 560)
+
+[node name="Roca9" parent="Mundo" unique_id=2131398903 instance=ExtResource("2")]
+position = Vector2(6550, 530)
+
+[node name="Estacion" parent="Mundo" unique_id=1489695377 instance=ExtResource("4")]
+position = Vector2(5900, 668)
+
+[node name="Olla" parent="Mundo" unique_id=119217177 instance=ExtResource("3")]
+position = Vector2(4800, 400)
+tipo = "olla"
+texto = "OLLA"
+color = Color(0.3, 0.3, 0.34, 1)
+
+[node name="Miel" parent="Mundo" unique_id=1818695818 instance=ExtResource("3")]
+position = Vector2(6235, 470)
+
+[node name="Abejas" parent="Mundo" unique_id=752701150 instance=ExtResource("5")]
+position = Vector2(6374, 704)
+miel = NodePath("../Miel")
+guarda_la_miel = true
+
+[node name="ArbolPanal2" parent="Mundo" unique_id=1168912484 instance=ExtResource("1")]
+position = Vector2(4645, 677)
+
+[node name="Abejas2" parent="Mundo" unique_id=558375735 instance=ExtResource("5")]
+position = Vector2(4645, 667)
+miel = NodePath("../Miel")
+
+[node name="Abejas4" parent="Mundo" unique_id=2069792078 instance=ExtResource("5")]
+position = Vector2(7022, 476)
+miel = NodePath("../Miel")
+
+[node name="ArbolPanal5" parent="Mundo" unique_id=908226781 instance=ExtResource("1")]
+position = Vector2(1528, 658)
+
+[node name="Abejas5" parent="Mundo" unique_id=1893245292 instance=ExtResource("5")]
+position = Vector2(1560, 649)
+miel = NodePath("../Miel")
+
+[node name="ArbolPanal6" parent="Mundo" unique_id=709894381 instance=ExtResource("1")]
+position = Vector2(2335, 651)
+
+[node name="Abejas6" parent="Mundo" unique_id=184711607 instance=ExtResource("5")]
+position = Vector2(2335, 641)
+miel = NodePath("../Miel")
+
+[node name="ArbolPanal7" parent="Mundo" unique_id=603095668 instance=ExtResource("1")]
+position = Vector2(3105, 656)
+
+[node name="Abejas7" parent="Mundo" unique_id=319613636 instance=ExtResource("5")]
+position = Vector2(3105, 646)
+miel = NodePath("../Miel")
+
+[node name="ArbolPanal8" parent="Mundo" unique_id=983620413 instance=ExtResource("1")]
+position = Vector2(3875, 700)
+
+[node name="Abejas8" parent="Mundo" unique_id=729602799 instance=ExtResource("5")]
+position = Vector2(3875, 690)
+miel = NodePath("../Miel")
+
+[node name="ArbolPanal10" parent="Mundo" unique_id=1713536537 instance=ExtResource("1")]
+position = Vector2(5427, 724)
+
+[node name="Abejas10" parent="Mundo" unique_id=1387750740 instance=ExtResource("5")]
+position = Vector2(5454, 708)
+miel = NodePath("../Miel")
+
+[node name="MamaOsa" parent="Mundo" unique_id=1858463294 instance=ExtResource("6")]
+position = Vector2(6180, 430)
+
+[node name="Lago" type="StaticBody2D" parent="." unique_id=1171363084]
 z_index = -9
 position = Vector2(5900, 525)
 
-[node name="Forma" type="CollisionShape2D" parent="Lago"]
+[node name="Forma" type="CollisionShape2D" parent="Lago" unique_id=40354706]
 shape = SubResource("lago")
 
-[node name="Agua" type="ColorRect" parent="Lago"]
+[node name="Agua" type="ColorRect" parent="Lago" unique_id=996966264]
 offset_left = -600.0
 offset_top = -95.0
 offset_right = 600.0
@@ -224,7 +299,7 @@ offset_bottom = 95.0
 mouse_filter = 2
 color = Color(0.2, 0.45, 0.7, 1)
 
-[node name="Texto" type="Label" parent="Lago"]
+[node name="Texto" type="Label" parent="Lago" unique_id=1351598840]
 offset_left = -100.0
 offset_top = -40.0
 offset_right = 100.0
@@ -232,87 +307,22 @@ offset_bottom = -14.0
 text = "EL LAGO"
 horizontal_alignment = 1
 
-[node name="Arbol27" parent="Mundo" instance=ExtResource("1")]
-position = Vector2(4300, 465)
-
-[node name="Arbol31" parent="Mundo" instance=ExtResource("1")]
-position = Vector2(7080, 650)
-
-[node name="ArbolPanal" parent="Mundo" instance=ExtResource("1")]
-position = Vector2(6900, 600)
-
-[node name="Roca7" parent="Mundo" instance=ExtResource("2")]
-position = Vector2(4150, 520)
-
-[node name="Roca8" parent="Mundo" instance=ExtResource("2")]
-position = Vector2(5400, 560)
-
-[node name="Roca9" parent="Mundo" instance=ExtResource("2")]
-position = Vector2(6550, 530)
-
-[node name="Estacion" parent="Mundo" instance=ExtResource("4")]
-position = Vector2(5900, 668)
-
-[node name="Lena" parent="Mundo" instance=ExtResource("3")]
-position = Vector2(4400, 650)
-tipo = "lena"
-texto = "LEÑA"
-color = Color(0.5, 0.33, 0.18, 1)
-
-[node name="Olla" parent="Mundo" instance=ExtResource("3")]
-position = Vector2(4800, 400)
-tipo = "olla"
-texto = "OLLA"
-color = Color(0.3, 0.3, 0.34, 1)
-
-[node name="Miel" parent="Mundo" instance=ExtResource("3")]
-position = Vector2(6940, 615)
-tipo = "miel"
-texto = "MIEL"
-color = Color(0.95, 0.75, 0.15, 1)
-
-[node name="Abejas" parent="Mundo" instance=ExtResource("5")]
-position = Vector2(6900, 590)
-miel = NodePath("../Miel")
-guarda_la_miel = true
-
-[node name="ArbolPanal2" parent="Mundo" instance=ExtResource("1")]
-position = Vector2(4700, 650)
-
-[node name="Abejas2" parent="Mundo" instance=ExtResource("5")]
-position = Vector2(4700, 640)
-miel = NodePath("../Miel")
-
-[node name="ArbolPanal3" parent="Mundo" instance=ExtResource("1")]
-position = Vector2(6750, 465)
-
-[node name="Abejas3" parent="Mundo" instance=ExtResource("5")]
-position = Vector2(6750, 455)
-miel = NodePath("../Miel")
-
-[node name="Abejas4" parent="Mundo" instance=ExtResource("5")]
-position = Vector2(7080, 640)
-miel = NodePath("../Miel")
-
-[node name="MamaOsa" parent="Mundo" instance=ExtResource("6")]
-position = Vector2(6180, 430)
-
-[node name="ReaparecerFogata" type="Marker2D" parent="." groups=["reaparicion"]]
+[node name="ReaparecerFogata" type="Marker2D" parent="." unique_id=337281934 groups=["reaparicion"]]
 position = Vector2(5250, 590)
 
-[node name="ReaparecerCampamento" type="Marker2D" parent="." groups=["reaparicion"]]
+[node name="ReaparecerCampamento" type="Marker2D" parent="." unique_id=564162820 groups=["reaparicion"]]
 position = Vector2(380, 510)
 
-[node name="ReaparecerLago" type="Marker2D" parent="." groups=["reaparicion"]]
+[node name="ReaparecerLago" type="Marker2D" parent="." unique_id=154082026 groups=["reaparicion"]]
 position = Vector2(3750, 520)
 
-[node name="Aparecedor" type="MultiplayerSpawner" parent="."]
+[node name="Aparecedor" type="MultiplayerSpawner" parent="." unique_id=129250354]
 spawn_path = NodePath("../Mundo/Jugadores")
 
-[node name="Inicio" type="Marker2D" parent="."]
+[node name="Inicio" type="Marker2D" parent="." unique_id=1272414583]
 position = Vector2(380, 510)
 
-[node name="Camara" type="Camera2D" parent="."]
+[node name="Camara" type="Camera2D" parent="." unique_id=2053353437]
 position = Vector2(640, 360)
 limit_left = 0
 limit_top = 0

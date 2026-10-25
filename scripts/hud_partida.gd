@@ -7,11 +7,21 @@ signal salir
 var _tarjetas: Dictionary = {}
 var _fila: HBoxContainer
 var _resultado: ColorRect
+var _conexion: Label
 
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_conexion = Label.new()
+	_conexion.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	_conexion.offset_left = -320
+	_conexion.offset_right = -16
+	_conexion.offset_top = 12
+	_conexion.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_conexion.add_theme_font_size_override("font_size", 12)
+	_conexion.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_conexion)
 	_fila = HBoxContainer.new()
 	_fila.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
 	_fila.offset_left = 16
@@ -26,6 +36,10 @@ func _ready() -> void:
 func _process(_delta: float) -> void:
 	if not visible:
 		return
+	var conexiones := PackedStringArray()
+	for id in Red.jugadores:
+		conexiones.append("%s · %s" % [Red.jugadores[id].nombre, Red.texto_conexion(id)])
+	_conexion.text = "\n".join(conexiones)
 	var ids := []
 	for j in get_tree().get_nodes_in_group("jugadores"):
 		# Solo la tarjeta del que juega en esta pantalla.
@@ -43,6 +57,11 @@ func _process(_delta: float) -> void:
 		# en el personaje y las teclas están en Opciones.
 		tarjeta.estado.text = j.NIVELES[j.nivel_borrachera()]
 		var avisos: Array[String] = []
+		var fogata := get_tree().get_first_node_in_group("fogata_cooperativa")
+		if fogata != null and fogata.cantidad(j.name.to_int()) > 0:
+			avisos.append("PALOS ×%d/2" % fogata.cantidad(j.name.to_int()))
+		if j.arma_tiempo > 0:
+			avisos.append("AGUIJÓN · %ds · daño +50%%" % ceili(j.arma_tiempo))
 		if j.combo.paso > 0:
 			avisos.append("COMBO %d/4" % j.combo.paso)
 		if not j.aviso_bebida().is_empty():

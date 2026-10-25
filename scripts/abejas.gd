@@ -53,10 +53,11 @@ func _ready() -> void:
 	_posicion_vista = position
 	# El panal se queda colgado en el árbol aunque el enjambre salga a perseguir.
 	var panal := Sprite2D.new()
-	panal.texture = load("res://arte/zona1/panal.png")
-	panal.scale = Vector2(2, 2)
+	var fino := preload("res://scripts/arte_objetos.gd").hd("res://arte/zona1/panal.png")
+	panal.texture = fino[0]
+	panal.scale = Vector2.ONE * 2.0 / fino[1]
 	panal.position = position + Vector2(0, 12)
-	panal.offset = Vector2(9, -44)
+	panal.offset = Vector2(9, -44) * fino[1]
 	get_parent().add_child.call_deferred(panal)
 	# Abejitas animadas en lugar de los cuadritos de prototipo.
 	for cuadrito in visual.get_children():

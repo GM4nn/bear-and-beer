@@ -178,6 +178,9 @@ func volumen(cual: String) -> float:
 
 
 func cambiar_volumen(cual: String, valor: float) -> void:
+	if not BUSES.has(cual) or not is_finite(valor):
+		return
+	valor = clampf(valor, 0.0, 1.0)
 	var bus := AudioServer.get_bus_index(BUSES[cual])
 	AudioServer.set_bus_volume_db(bus, linear_to_db(valor))
 	AudioServer.set_bus_mute(bus, valor <= 0.001)
@@ -212,7 +215,8 @@ func agregar_deslizadores(padre: Container, antes: int, tamano_texto := 16) -> v
 		deslizador.step = 0.05
 		deslizador.custom_minimum_size.y = 28
 		deslizador.value = volumen(cual)
-		deslizador.value_changed.connect(cambiar_volumen.bind(cual))
+		deslizador.name = "Volumen_" + cual
+		deslizador.value_changed.connect(func(valor): cambiar_volumen(cual, valor))
 		deslizador.visibility_changed.connect(func():
 			if deslizador.is_visible_in_tree():
 				deslizador.set_value_no_signal(volumen(cual)))

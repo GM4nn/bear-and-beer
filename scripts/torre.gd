@@ -3,7 +3,7 @@ extends Node
 ## pasajeros desde la base para que no se separen por el orden de los paquetes.
 
 const MAX_COMPAS := 3
-const ALTURA_HOMBROS := 48.0
+const ALTURA_HOMBROS := 40.0
 const RADIO_X := 28.0
 const RADIO_Y := 22.0
 const VENTANA_CRITICO := 0.18
@@ -49,6 +49,8 @@ func _cadena(base: Node2D) -> Array:
 
 
 func _equilibrado(compa: Node2D) -> bool:
+	if compa.en_rescate():
+		return get_parent().rescate.puede_sostener(compa)
 	return compa.puede_actuar() and compa._pieza_cargada() == null
 
 
@@ -166,6 +168,8 @@ func _alinear() -> void:
 		for piso in range(1, compas.size()):
 			var compa: Node2D = compas[piso]
 			compa.position = base.position
+			if base.en_rescate():
+				compa.position.x += get_parent().rescate.equilibrio * 12.0 * piso
 			compa.altura = base.altura + ALTURA_HOMBROS * piso
 			compa.velocity = Vector2.ZERO
 
@@ -182,7 +186,7 @@ func _invalidar_impactos(id: int) -> void:
 func bono_impacto(compa: Node2D, objetivo: Node2D, dir: int, dano: int) -> int:
 	if not multiplayer.is_server() or get_parent().finalizada or not objetivo.is_in_group("jefe"):
 		return 0
-	if not objetivo.activa or objetivo.estado in ["llegando", "lago", "derrotada"]:
+	if not objetivo.puede_recibir_golpe():
 		return 0
 	var compas := _cadena(_base(compa))
 	if compas.size() < 2 or compas.size() > MAX_COMPAS or not compas.all(_equilibrado):

@@ -29,7 +29,7 @@ func _physics_process(delta: float) -> void:
 
 
 func enemigo_valido(cosa: Node2D) -> bool:
-	return cosa.is_in_group("jefe") and cosa.activa and cosa.estado not in ["llegando", "lago", "derrotada"]
+	return cosa.is_in_group("jefe") and cosa.puede_recibir_golpe()
 
 
 func contacto(tipo: int, cosa: Node2D) -> bool:
@@ -79,4 +79,4 @@ func mostrar_impacto(donde: Vector2, tipo: int, critico: bool) -> void:
 func texto() -> String:
 	if paso == 0:
 		return ""
-	return ["", "1/4 · J/RT: puño izquierdo", "2/4 · K/L3: cabezazo", "3/4 · L/↓: ¡patada!"][paso]
+	return Controles.indicaciones(["", "1/4 · J/RT: puño izquierdo", "2/4 · K/L3: cabezazo", "3/4 · L/↓: ¡patada!"][paso])

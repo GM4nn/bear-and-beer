@@ -118,7 +118,7 @@ Movimiento y combate completos con teclado: mano izquierda en WASD y mano derech
 - El combo individual requiere estar fuera de una torre y no cargar piezas para los ataques nuevos. E/Y permite bajar o soltar; las torres conservan sus puños y su crítico coordinado.
 - Cada contacto real muestra un estallido breve de **tinta negra y destello blanco**, con borde irregular y trazos radiales como la referencia del usuario, **sin palabras ni letras**. Dura 0,24 s; el crítico usa el mismo efecto más grande durante 0,34 s. Fallar no muestra un impacto. El HUD indica el siguiente ataque y todos los clientes reciben los efectos confirmados por el servidor.
 - Animaciones propias del segundo brazo, cabezazo y patada; el daño se aplica cuando el miembro alcanza el cuadro de contacto, una sola vez por ataque.
-- Espera corta entre golpes: entre el inicio de un ataque y el siguiente pasan al menos **0,15 segundos**; machacar más rápido no pega más rápido. La preparación dura 0,08 / 0,10 / 0,14 / 0,16 segundos. Se guardan hasta tres pulsaciones anticipadas en orden para encadenar la secuencia rápida sin perder entradas; recibir daño, rodar, montar, parar o terminar la ronda cancela lo pendiente. Mantener un botón no repite ataques. Los bots conservan su ritmo de ayuda.
+- Espera corta entre golpes: entre el inicio de un ataque y el siguiente pasan al menos **0,15 segundos**; machacar más rápido no pega más rápido. La preparación dura 0,08 / 0,10 / 0,14 / 0,16 segundos. Se guardan hasta tres pulsaciones anticipadas de ataques distintos en orden para encadenar la secuencia rápida sin perder entradas; repetir el mismo ataque exige **0,30 segundos** y las repeticiones prematuras se descartan; recibir daño, rodar, montar, parar o terminar la ronda cancela lo pendiente. Mantener un botón no repite ataques. Los bots conservan su ritmo de ayuda.
 
 **Compazo y parada a tiempo (implementados):**
 - **Compazo:** siendo la base de una torre, R/LB lanza al de más arriba; con mando, R3 también lanza al compañero cercano que tienes delante (en teclado esto aún no tiene tecla). El compañero vuela girando en arco; al chocar con Mamá Osa le hace **40 de daño**, recibe **15 de daño** y rebota. La osa se tambalea durante **0,75 segundos**. Un vuelo solo cuenta una vez; si falla, aterriza sin daño de choque. Espera entre lanzamientos: **1,4 segundos**.
@@ -144,7 +144,7 @@ Movimiento y combate completos con teclado: mano izquierda en WASD y mano derech
 
 **Bots de ayuda (solo para probar, se apagan con `bot_de_ayuda` en Main):**
 - Al crear partida se unen 2 bots (configurable con `cantidad_bots`).
-- Sin Mamá Osa, ayudan con la misión: van por la miel, la olla y la leña y las llevan a la fogata.
+- Sin Mamá Osa, primero golpean árboles, recogen y colocan los dos palos. Un bot ocupa un papel de la fogata y espera al humano; los otros dejan libre el segundo papel. Después buscan la olla y la miel como antes.
 - Cuando aparece Mamá Osa, se montan en los hombros del anfitrión y acompañan cada golpe suyo para hacer el crítico de torre. Si traían una pieza, la sueltan antes de subir. Cuando ella ya no está, se bajan solos.
 
 ### La cerveza: cura y Medidor de Borrachera 🍺
@@ -165,7 +165,7 @@ Tomar cerveza **te cura**, pero sube tu medidor de borrachera. Tomar tarda un pa
 - **Recoger cerveza:** E/Y junto a una botella del mapa; máximo 6 en el inventario (un six-pack). Hay seis botellas juntas cerca del campamento para probar las mecánicas desde el inicio. Las botellas vuelven a aparecer tras 25 segundos para permitir intentos largos.
 - **Beber:** Q/RB, con las manos libres y en el suelo. Tarda 2 segundos, inmoviliza y cura 35 puntos, hasta un máximo de 100. La botella se consume al terminar; recibir daño interrumpe la bebida sin curar ni gastar la botella, con un aviso en el HUD.
 - **Borrachera:** cada bebida terminada añade 30 puntos. Permanece 12 segundos tras la última bebida y después baja 0.5 por segundo cuando no se bebe. Los niveles empiezan en 0, 25, 50 y 75 puntos; el daño es 10, 15, 22 y 30 respectivamente. Bebiendo seguido desde sobrio: primera chela alegre, segunda pedo, tercera hasta atrás y cuarta vómito. El HUD muestra el valor numérico del medidor y avisa cuando faltan chelas.
-- **Torpeza:** tambaleo creciente; en nivel 2 hay un 20% de probabilidad de golpear hacia el lado equivocado. En nivel 3 se reduce la velocidad y el golpe normal se convierte en **"Ven pa'cá"**, con más alcance y empujón. La espera mínima de 0,15 segundos entre golpes es la misma en todos los niveles.
+- **Torpeza:** tambaleo creciente; en nivel 2 hay un 20% de probabilidad de golpear hacia el lado equivocado. En nivel 3 se reduce la velocidad y el golpe normal se convierte en **"Ven pa'cá"**, con más alcance y empujón. La espera mínima de 0,15 segundos al alternar y de 0,30 segundos al repetir un ataque es la misma en todos los niveles.
 - **Sueño y vómito:** mantenerse 6 segundos en nivel 3, en el suelo y sin beber, rodar ni estar aturdido, puede dejarte dormido 2.5 segundos. Llegar a 100 puntos provoca vómito durante 2.5 segundos y baja el medidor a 70. El charco dura 12 segundos y hace resbalar a quien lo pisa; se puede saltar o esquivar.
 - **Caído y reanimación:** a 0 de vida sueltas la pieza y quedas inmóvil. Un compañero con las manos libres mantiene E/Y a menos de 60 píxeles durante 3 segundos; más compañeros aceleran la ayuda. Si nadie ayuda, el progreso se reinicia. Te levantas con 40 de vida y 1.5 segundos de protección.
 - **Rodar:** Shift/B durante 0.32 segundos; evita daño en los primeros 0.2 segundos y tiene 1.1 segundos de espera. Suelta la pieza que estés cargando.
@@ -193,6 +193,10 @@ Regla general: **a todos los jefes hay que pegarles hasta matarlos**, pero cada 
 - **Fase 1:** zarpazos y empujones, revisa a sus crías.
 - **Fase 2:** anuncia una dirección y embiste; al encontrar agua se desvía por la orilla manteniendo el mismo lado de desvío. No vuelve a apuntar al jugador durante la carrera. Termina al acercarse al borde de la arena. Ruge para aturdir.
 - **Fase 3:** salta al lago y sale salpicando, golpe al piso que hace volar a todos.
+- **Ultra fase (después de la tercera):** al agotar la vida normal todavía no hay victoria: aparece la osa gigante de Claude, con un último tramo de vida equivalente al **50 % de su máximo anterior** (150 sola, 250 con dos jugadores). Conserva los 100 de vida de cada compa. Alterna aparición frontal, izquierda y derecha, eligiendo por turnos entre los jugadores vivos.
+- **Ataques de ultra:** la garra vertical hace **25 de daño** al tocar el suelo (cuadro 7 a 14 fps, 0,5 s); se esquiva saliendo de su carril o rodando. El barrido lateral hace **20** (cuadro 6 a 14 fps, unos 0,43 s) y pasa por debajo de quien esté a más de 28 px de altura. El daño comprueba la silueta del cuadro actual (uñas, mano, brazo y polígono de la manga) contra el cuerpo del jugador durante la entrada y la retirada. La mano quieta conserva su ventana segura para contraatacar. Cada ataque fija el destino al empezar, sin perseguir al jugador durante la preparación, y solo aplica un contacto por jugador. El perfil lateral conserva su costura fuera de pantalla cuando cambia la cámara; el brazo mantiene su alcance físico en el mundo. F no bloquea estos ataques gigantes.
+- **Contraataque:** la mano queda apoyada **1,1 s** después del impacto y recibe puños, combo crítico, botellas y compazos. Fuera de esa ventana el antiguo cuerpo pequeño no recibe daño ni detiene botellas. La ultra no se tambalea ni entra en rivalidad con la abeja. Al derrotarla sí llegan los resultados de victoria.
+- **Garra larga:** conserva los sprites y el alcance de Claude. La extensión de la manga usa su misma tela con curvatura y anchura progresiva; el brazo entra y se recoge mediante desplazamiento, sin estirar la mano. Los contactos los calcula el anfitrión con reloj de física y posiciones del mundo compartidas, independientes de la cámara de cada jugador. La pausa congela ataques; terminar la ronda o reconstruir el bosque los elimina.
 - **Lo que enseña:** pelear en equipo y cuidar un objetivo.
 
 ### Jefe 2 — El Abuelo (Cueva de Hielo)
@@ -237,7 +241,7 @@ Antes de cada jefe hay **una sola misión**: recolectar las piezas del artilugio
 
 | Zona | Piezas a recolectar (ejemplo) | Obstáculo de la misión |
 |---|---|---|
-| El Lago | Miel, olla, leña | Abejas furiosas al tomar la miel |
+| El Lago | Dos palos, olla y miel | Encender fuego entre dos; abejas junto a la miel |
 | Cueva de Hielo | Bocina, pilas, cables | Piso resbaloso y cuevas oscuras |
 | El Río | Hieleras vacías, cuerdas, remo | Cruzar troncos y saltar entre rocas |
 | Los Pinos | Llanta, tablas, resorte | Ardillas que se roban las piezas |
@@ -247,6 +251,19 @@ Antes de cada jefe hay **una sola misión**: recolectar las piezas del artilugio
 - Las piezas se cargan con las manos (si te pegan, la sueltas).
 - Al juntar todo, se **construye en una estación** del mapa (mantener botón entre varios jugadores para hacerlo más rápido). Si se suelta el botón, el avance se baja.
 - **Zona 1:** las abejas atacan a quien se acerque a un panal; molestan con menos fuerza durante la pelea y se calman al vencer al jefe. Con la papilla lista hay **30 segundos para dársela a los oseznos** (otra barra, manteniendo el botón junto a ellos). Si se logra, lloran por su mamá y empieza la pelea; si no, Mamá Osa derriba a todos y termina el intento. En este prototipo se reintenta la zona desde la sala.
+
+### Fogata cooperativa — punto 1 implementado (23/10/2026)
+
+- La fogata bajo el lago empieza **apagada**. Se retiró la pieza fija de leña; la fogata del campamento se conserva.
+- Cada **tres golpes** a un árbol desprenden un palo, hasta disponer de **dos en total**. Se recogen con **E** y el HUD personal muestra **PALOS ×1/2 o ×2/2**. Un jugador puede llevar ambos o pueden repartirse entre dos; no ocupan las manos de las piezas.
+- **E** cerca del lugar de la fogata coloca los palos que lleve el jugador. Con ambos colocados, los primeros dos que pulsen E ocupan los papeles **horizontal** y **vertical**, por orden de llegada. Una sola persona espera; no puede encender el fuego por sí sola.
+- Se abre una vista de acercamiento funcional con los dos brazos del color de los participantes, palos y animación vinculada a los movimientos reales. Mantener **clic izquierdo** y arrastrar de ida y vuelta en el eje indicado. Cambiar de eje, mover sin clic o mover siempre en la misma dirección no mantiene el calor.
+- **Dos segundos de preparación**, luego **35 segundos** para encender. En la versión actual de Claude ambos frotan horizontalmente, en sentidos contrarios, y corrigen arriba/abajo la deriva de sus brazos. Clic sostenido da firmeza. Los trazos de 60 px deben alternar cada 0,18–0,9 s y coincidir entre compañeros dentro de 0,28 s. La guía marca 0,4 s; se requieren **8 segundos efectivos** de coordinación. Sin coordinación el calor baja 5% por segundo. El tambaleo puede separar las manos del palo: deben corregirlas. Sin configuración del anfitrión.
+- Los demás jugadores pueden acercarse y pulsar **E como espectadores**: ven los mismos participantes, brazos, barra y tiempo, pero no contribuyen. **E** sale; **Esc** pausa para todos. Salir como espectador no interrumpe a los dos participantes.
+- Estar en el acercamiento bloquea movimiento y combate, pero no vuelve invulnerable. Daño o incapacidad de un participante, alejarse, desconectarse o terminar la ronda cancela. Se conservan los palos colocados para volver a intentar; desconectarse con palos en el inventario los deja en el suelo. Al vencer el tiempo también se puede reintentar.
+- El servidor valida identidad, papel, encuentro, distancia, eje, magnitud, alternancia e intervalo de los movimientos. La pausa congela el reloj y descarta arrastres anteriores; los observadores no pueden avanzar el fuego por RPC.
+- Al completar la barra aparece la fogata con sus sprites de fuego y humo existentes. **Olla y miel conservan sus mecánicas actuales**, y cocinar exige fuego encendido además de ambas piezas entregadas.
+- **Pendiente de diseño del usuario:** nuevas mecánicas para olla y miel; subir los oseznos al árbol alto pertenece a la continuación de la misión y no se implementó en este punto 1. El dibujo del acercamiento es una presentación funcional de la mecánica; no sustituye los sprites de Claude.
 
 ### Abejas y forcejeo — mecánica propia del Lago
 
@@ -397,3 +414,41 @@ El compa del sleeping permanece completamente quieto; solo sus Z suben y se desv
 - ~~Vida de los jugadores~~ → **100 puntos para todos**
 - Horas por semana disponibles
 - Música
+
+
+## Revisión de mecánicas y opciones — 23/10/2026
+
+- **Versión:** `0.1.0-alpha`, definida en `project.godot` y visible en pequeño en el menú principal.
+- **Audio:** corregido el orden de los argumentos de los sliders de Música/Efectos. Se aplican al bus correspondiente, cero silencia y los valores permanecen en `user://audio.cfg`, tanto desde el menú como desde pausa.
+- **Controles:** botón «Ver y modificar controles» en ambas pantallas de opciones. Lista desplazable de acciones y teclas; seleccionar una acción y pulsar su nueva tecla. Se rechazan duplicados y se reservan Esc/Enter/Tab para los menús. Guarda en `user://controles.cfg`; permite restaurar los originales. El mando conserva sus bindings. Las indicaciones principales de misión/interacción/combo usan la tecla configurada.
+- **Puño H:** repetir el mismo ataque requiere 0,30 s y no deja ataques repetidos en cola. Alternar H → J → K → L conserva la ventana de 0,15 s y el crítico de la patada. No se redujo el tiempo del contacto ni se cambiaron los cuadros de Claude.
+- **Abeja musculosa:** vida 60 → **180**. Tras morir descansa **12 s** antes de poder fusionarse otra vez. Cada grupo de tres bajas vuelve a sortear la aparición, con garantía como máximo al segundo grupo elegible; solo una musculosa activa a la vez. Ganar el forcejeo sigue noqueándola.
+- **Botín:** derrotar la musculosa deja un **aguijón** recuperable con la tecla de interactuar. Da **+50% de daño cuerpo a cuerpo durante 20 s**, sin acumular multiplicadores; desaparece al caer. El botín sin recoger dura 45 s. Lo resuelve el anfitrión y se replica a todos.
+- **Reanimación:** barra visible sobre el caído con el porcentaje real sincronizado; mantener la tecla de interactuar, soltar reinicia el avance. Conserva los 3 s y la ayuda cooperativa existentes.
+- **Conexión:** RTT real de ida y vuelta cada 2 s, en HUD y sala, con Buena (<90 ms), Regular (<180 ms) o Alta latencia. El anfitrión se identifica como tal; sin respuesta se muestra «Sin respuesta / midiendo», sin inventar un ping cero.
+- **Guardar:** una ranura local del anfitrión, mediante Esc → Guardar partida. `user://partida.cfg`, escritura temporal y reemplazo, con versión de formato y validación antes de cargar. Rechaza guardar si todos están caídos o la ronda terminó.
+- **Continuar:** botón en el menú cuando existe guardado. Crea un lobby nuevo; el anfitrión recupera su color y los compañeros eligen el color con el que guardaron para recuperar sus inventarios. Conserva posiciones, salud, cerveza/botellas/borrachera, arma temporal, misión, piezas entregadas, fuego/palos, suministros, enjambres y vida/fase de los enemigos. Los palos de un ausente quedan en el suelo. Suelta piezas transportadas en su posición, separa torres/agarres y reinicia los ataques y la fricción en curso; no serializa partículas ni proyectiles en vuelo. No es guardado en la nube ni automático.
+- **Logs:** el regreso al lobby ahora detiene y confirma las réplicas antes de borrar los jugadores, evitando posiciones tardías sobre sincronizadores eliminados. La consulta de cervezas también comprueba que el peer siga conectado al cerrar un bot.
+
+
+## Rescate previo de los oseznos — 24/10/2026
+
+La secuencia de Zona 1 ahora es **miel como señuelo → rescatar los dos oseznos → dos palos y fuego cooperativo → olla/miel/papilla → alimentar → Mamá Osa**. Se conserva el arte existente de Claude; el árbol del rescate reutiliza un árbol del bosque ampliado y los sprites actuales de los oseznos.
+
+- Árbol al extremo derecho del mapa (7020, 650), con el círculo de captura a su izquierda y la rama por encima incluso de la torre de tres. El indicador de misión lleva primero a la miel y luego al círculo bajo el árbol.
+- Llevar el frasco al círculo y pulsar **E** ofrece una porción. El frasco queda recuperable cerca para la papilla; el señuelo permanece en los reintentos.
+- Formar una torre de **2 o 3** (saltar + E sobre un compañero). Cualquier integrante pulsa E para atraer y atajar **un solo osezno por intento**. Durante el intento se bloquean golpes, lanzamientos, salto y desplazamiento; Esc sigue pausando.
+- Al caer sobre la torre, hay que corregir juntos con **izquierda/derecha (A/D o flechas, o las teclas reasignadas)**. La indicación pide soltar las teclas cuando está centrada. La torre se inclina y desplaza los pisos superiores, con mayor movimiento cuanto más arriba están.
+- Barras de equilibrio, miedo y confianza. Se requieren **8 segundos efectivos de coordinación**, con un límite de intento de 25 s. El miedo baja al mantener la calma y aumenta al descoordinarse o inclinarse demasiado.
+- Al llenar el miedo, el osezno **araña al último de la torre por 12 de daño** y salta de vuelta a su rama. Puede intentarse de nuevo; ningún éxito anterior se pierde. El daño externo o la desconexión de un participante también interrumpen el intento y liberan los controles.
+- Cada éxito lleva al osezno al campamento. Solo cuando están ambos abajo se habilitan los palos, el fuego y la entrega de ingredientes. Antes del rescate no hay un objetivo invisible golpeable de oseznos en el campamento.
+- El anfitrión resuelve participantes, equilibrio, daño y éxitos. Los demás reciben el mismo estado; un espectador no puede mandar correcciones por los participantes.
+- Los bots de ayuda buscan/ofrecen miel, suben sobre el anfitrión cuando este está en el círculo y corrigen su parte del equilibrio. El humano inicia el intento y debe aportar su corrección.
+- Guardar conserva el señuelo y los oseznos ya a salvo. Cargar devuelve a la rama al que estuviera saltando, sin dejar jugadores atrapados. Los guardados anteriores que ya tenían fuego consideran completado el rescate para mantener su progreso.
+
+
+### Distribución de árboles y panales — 24/10/2026
+
+El árbol de rescate se trasladó al final del mapa, sin ampliar sus límites. El círculo queda a la izquierda del tronco para que puedan formar la torre sin pegarse al borde. Las barras se muestran al costado opuesto de la torre cuando la cámara alcanza el límite derecho.
+
+Hay **10 árboles con panal y enjambre** (antes 4), repartidos desde x=1050 hasta x=7080. Se alternan los lados del camino, dejando el campamento inicial y el círculo del rescate fuera del radio inicial de detección. El panal que custodia el frasco de miel queda en (6420, 370), con la miel al pie, antes de llegar al árbol de los oseznos. Los demás conservan su comportamiento local, muerte y reaparición; no se duplicó el ingrediente de la misión.

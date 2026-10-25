@@ -68,6 +68,8 @@ func _physics_process(delta: float) -> void:
 	# Enemigos y cosas del escenario (abejas, jefe, olla, oseznos).
 	var quien: Node2D = get_node_or_null("../Jugadores/%d" % lanzador)
 	for cosa: Node2D in get_tree().get_nodes_in_group("golpeables"):
+		if cosa.is_in_group("jefe") and cosa.fase == 4 and not cosa.puede_recibir_golpe():
+			continue
 		var d := cosa.global_position - global_position
 		var suelo: float = cosa.altura if cosa.is_in_group("jefe") else 0.0
 		if absf(d.x) <= 14.0 + cosa.ancho and absf(d.y) <= 16.0 + cosa.ancho * 0.4 \

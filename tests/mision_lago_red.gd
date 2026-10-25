@@ -87,6 +87,11 @@ class Prueba extends Node:
 		osa._cambiar("dormida", 0)
 		host._reaparecer.rpc(Vector2(1000, 650))
 		compa._reaparecer.rpc(Vector2(1200, 650))
+		# El encendido cooperativo se verifica completo en fogata_red.gd.
+		main.juego.get_node("Partida").rescate.rescatados = 2
+		estacion.fogata.encendida = true
+		estacion.fogata.colocados = 2
+		estacion.fogata._publicar()
 		var piezas := get_tree().get_nodes_in_group("piezas")
 		for i in range(piezas.size()):
 			var pieza = piezas[i]
@@ -104,7 +109,7 @@ class Prueba extends Node:
 			await _esperar(0.15)
 			_comprobar(pieza.entregada and pieza.portador == 0, "Caminar y entregar %s con E" % pieza.tipo)
 			j._reaparecer.rpc(Vector2(1200 + i * 100, 650))
-		_comprobar(estacion.completa(), "Se reunieron las tres piezas distintas")
+		_comprobar(estacion.completa(), "Fogata encendida más olla y miel habilitan la papilla")
 		host._reaparecer.rpc(estacion.position + Vector2(-30, 0))
 		compa._reaparecer.rpc(estacion.position + Vector2(30, 0))
 		await _esperar(0.2)
@@ -161,8 +166,24 @@ class Prueba extends Node:
 			for accion in ["golpear", "puno_izquierdo", "cabezazo", "patada"]:
 				await _pulsar(1, accion, 0.05)
 				await _esperar(0.16)
+			if osa.fase == 4:
+				break
+		_comprobar(osa.fase == 4 and not main.juego.get_node("Partida").finalizada,
+			"La misión continúa con la ultra después de las tres fases")
+		osa.ultra._reloj = 100
+		# Terminar la vida restante acertando combos en manos expuestas.
+		for intento in range(5):
+			host._reaparecer.rpc(Vector2(5240, 530))
+			osa.ultra._atacar.rpc(Vector2(5300, 350), false, 0)
+			await _esperar(0.56)
+			host._reaparecer.rpc(Vector2(5240, 350))
+			await _esperar(0.05)
+			for tipo in range(4):
+				host.golpear(1, tipo)
+				await _esperar(0.2)
 			if main.juego.get_node("Partida").finalizada:
 				break
+			await _esperar(1.0)
 		await _esperar(0.2)
 		await _consultar()
 		_comprobar(osa.estado == "derrotada" and informe.get("victoria", false), "Los golpes reales vencen al jefe y ambos reciben la victoria")

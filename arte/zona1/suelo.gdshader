@@ -5,10 +5,13 @@ shader_type canvas_item;
 // camino se endereza para entrar a las playitas (ver lago.gdshader).
 // camino_centro / camino_ancho tienen su copia en ambientacion.gd: si cambias
 // una, cambia la otra.
+// Se dibuja en píxeles de 1x1 (al nivel de detalle de los personajes); las
+// orillas, dientes y huellas conservan el tamaño de antes (ARTE = 3 px).
 
 uniform vec2 tamano = vec2(11200.0, 610.0);
 uniform vec2 origen = vec2(-2000.0, 190.0);
-uniform float pixel = 3.0;
+uniform float pixel = 1.0;
+const float ARTE = 3.0;
 uniform float lago_x = 5900.0;
 uniform vec4 pasto : source_color = vec4(0.522, 0.651, 0.282, 1.0);
 uniform vec4 pasto_claro : source_color = vec4(0.584, 0.706, 0.322, 1.0);
@@ -75,13 +78,22 @@ vec4 color_pasto(vec2 p, vec2 celda) {
 	} else if (mancha < 0.32) {
 		color = pasto_oscuro;
 	}
-	// Briznas: trazos de 1x2 píxeles de arte, oscuros y algunos brillantes.
-	vec2 brizna = floor(celda / vec2(1.0, 2.0));
-	float h = azar(brizna + vec2(3.1, 7.7));
-	if (h > 0.955) {
-		color = pasto_oscuro;
-	} else if (h > 0.94 && mancha > 0.45) {
-		color = pasto_brillo;
+	// Briznas: trazos de 1 píxel de ancho y 3 a 6 de alto, oscuros con la
+	// punta clara; en las manchas de luz algunas son brillantes.
+	// Cada columna de 5 px va desfasada en alto para que no formen filas.
+	float desfase = floor(azar1(floor(p.x / 5.0) + 3.7) * 11.0);
+	vec2 q2 = p + vec2(0.0, desfase);
+	vec2 caja = floor(q2 / vec2(5.0, 11.0));
+	vec2 dentro = q2 - caja * vec2(5.0, 11.0);
+	float h = azar(caja + vec2(3.1, 7.7));
+	float columna = floor(azar(caja + vec2(1.7, 4.4)) * 5.0);
+	float largo = 3.0 + floor(azar(caja + vec2(8.3, 2.9)) * 4.0);
+	if (h > 0.72 && dentro.x == columna && dentro.y >= 11.0 - largo) {
+		if (h > 0.9 && mancha > 0.45) {
+			color = pasto_brillo;
+		} else {
+			color = dentro.y == 11.0 - largo ? pasto_claro : pasto_oscuro;
+		}
 	}
 	// Junto al bosque el pasto queda a la sombra de los árboles.
 	// La sombra sigue la orilla ondulada (orilla_bosque en ambientacion.gd).
@@ -99,8 +111,8 @@ vec4 color_pasto(vec2 p, vec2 celda) {
 
 vec4 color_tierra(vec2 p, vec2 celda, float desde_arriba, float ancho) {
 	vec4 color = tierra;
-	// Terrones: manchitas de 2x1 en tonos de tierra.
-	float t = azar(floor(celda / vec2(2.0, 1.0)) + vec2(9.2, 1.3));
+	// Terrones: manchitas de 3x2 en tonos de tierra.
+	float t = azar(floor(celda / vec2(3.0, 2.0)) + vec2(9.2, 1.3));
 	if (t > 0.93) {
 		color = tierra_media;
 	} else if (t > 0.9) {
@@ -109,16 +121,19 @@ vec4 color_tierra(vec2 p, vec2 celda, float desde_arriba, float ancho) {
 	// Dos huellas de llanta que siguen la curva del camino.
 	float r = desde_arriba / (2.0 * ancho);
 	float huella = min(abs(r - 0.33), abs(r - 0.68)) * 2.0 * ancho;
-	if (huella < pixel * 1.0 && azar1(floor(p.x / 9.0)) > 0.25) {
+	if (huella < ARTE && azar1(floor(p.x / 9.0)) > 0.25) {
 		color = tierra_media;
 	}
-	// Piedritas grises con sombra abajo (pocas: de 2x2 píxeles de arte).
-	vec2 bloque = floor(celda / 2.0);
-	if (azar(bloque + vec2(5.5, 2.2)) > 0.996) {
-		color = mod(celda.y, 2.0) < 1.0 ? piedra : piedra_oscura;
+	// Piedritas grises (pocas): 5x4 con brillo arriba y sombra abajo.
+	vec2 bloque = floor(p / 7.0);
+	vec2 en_bloque = p - bloque * 7.0;
+	if (azar(bloque + vec2(5.5, 2.2)) > 0.993 && en_bloque.x >= 1.0 && en_bloque.x <= 5.0
+			&& en_bloque.y >= 2.0 && en_bloque.y <= 5.0
+			&& !((en_bloque.x == 1.0 || en_bloque.x == 5.0) && (en_bloque.y == 2.0 || en_bloque.y == 5.0))) {
+		color = en_bloque.y >= 4.0 ? piedra_oscura : (en_bloque.y == 2.0 && en_bloque.x < 4.0 ? tierra_clara : piedra);
 	}
 	// Sombra del pasto que cuelga sobre la orilla de arriba.
-	if (desde_arriba < pixel * 2.0) {
+	if (desde_arriba < ARTE * 2.0) {
 		color = tierra_oscura;
 	}
 	return color;
@@ -129,17 +144,17 @@ void fragment() {
 	vec2 celda = floor(p / pixel);
 	float centro = camino_centro(p.x);
 	float ancho = camino_ancho(p.x);
-	// Orillas irregulares: cada 2 píxeles de arte la orilla sube o baja un poco,
+	// Orillas irregulares: cada 6 píxeles la orilla sube o baja un poco,
 	// y del lado de arriba el pasto cuelga en dientes.
-	float borde_x = floor(p.x / (pixel * 2.0));
-	float arriba = centro - ancho + (azar1(borde_x) - 0.5) * 2.0 * pixel + floor(azar1(borde_x + 50.0) * 2.5) * pixel;
-	float abajo = centro + ancho + (azar1(borde_x + 17.0) - 0.5) * 2.0 * pixel;
+	float borde_x = floor(p.x / (ARTE * 2.0));
+	float arriba = floor(centro - ancho + (azar1(borde_x) - 0.5) * 2.0 * ARTE + floor(azar1(borde_x + 50.0) * 2.5) * ARTE);
+	float abajo = floor(centro + ancho + (azar1(borde_x + 17.0) - 0.5) * 2.0 * ARTE);
 	if (p.y >= arriba && p.y < abajo) {
 		COLOR = color_tierra(p, celda, p.y - arriba, ancho);
-	} else if (p.y >= abajo && p.y < abajo + pixel) {
+	} else if (p.y >= abajo && p.y < abajo + 2.0) {
 		// Borde oscuro del pasto bajo el camino.
 		COLOR = pasto_sombra;
-	} else if (p.y < arriba && p.y >= arriba - pixel) {
+	} else if (p.y < arriba && p.y >= arriba - 2.0) {
 		COLOR = pasto_oscuro;
 	} else {
 		COLOR = color_pasto(p, celda);

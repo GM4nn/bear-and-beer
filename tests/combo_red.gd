@@ -141,7 +141,7 @@ class Prueba extends Node:
 		await _esperar(0.2)
 		_comprobar(main.jefe.vida == 990, "Machacar no adelanta golpes: entre uno y otro pasan al menos 0,15 s")
 		await _esperar(0.35)
-		_comprobar(main.jefe.vida == 970, "Las tres pulsaciones rápidas se guardan y dan tres contactos")
+		_comprobar(main.jefe.vida == 990, "Repetir H antes de recoger el brazo no deja golpes automáticos en cola")
 		await _preparar()
 		host.golpear(1, 0)
 		host.golpear(1, 1)
@@ -209,7 +209,7 @@ class Prueba extends Node:
 		else:
 			_accion.rpc_id(id, tipo)
 		await _esperar(_j(id).combo.IMPACTOS[tipo] + 0.05)
-		if foto and "--captura" in OS.get_cmdline_user_args():
+		if foto and "--captura" in OS.get_cmdline_user_args() and DisplayServer.get_name() != "headless":
 			await RenderingServer.frame_post_draw
 			get_viewport().get_texture().get_image().save_png("user://combo_%d.png" % tipo)
 		await _esperar(_j(id).combo.ESPERAS[tipo] - _j(id).combo.IMPACTOS[tipo] + 0.06)

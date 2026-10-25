@@ -49,6 +49,7 @@ func _probar() -> void:
 	red.iniciar_partida()
 	var j = main.jugadores.get_node("1")
 	var jefe = main.jefe
+	main.juego.get_node("Partida").rescate.rescatados = 2
 	if not demo:
 		# Sin la osa, los bots ayudan con la misión en vez de montarse.
 		var inicio := {}
@@ -60,17 +61,16 @@ func _probar() -> void:
 		for compa in main.jugadores.get_children():
 			if compa == j:
 				continue
-			# Avanzar hacia la pieza libre más cercana (o ya cargarla) es ayudar.
+			# La primera tarea ahora son los palos: acercarse a un árbol o recogerlos.
 			var meta: Node2D = null
-			for pieza: Node2D in root.get_tree().get_nodes_in_group("piezas"):
-				if pieza.portador == 0 and not pieza.entregada and (meta == null \
-						or inicio[compa.name].distance_to(pieza.position) < inicio[compa.name].distance_to(meta.position)):
-					meta = pieza
+			for arbol: Node2D in root.get_tree().get_nodes_in_group("arboles_con_palos"):
+				if meta == null or inicio[compa.name].distance_to(arbol.position) < inicio[compa.name].distance_to(meta.position):
+					meta = arbol
 			var avanzo: bool = meta != null and compa.position.distance_to(meta.position) \
-				< inicio[compa.name].distance_to(meta.position) - 100
-			print("BOT ", compa.nombre, " de ", inicio[compa.name], " a ", compa.position, " carga ", compa._pieza_cargada())
-			ayudan = ayudan and (compa._pieza_cargada() != null or avanzo)
-		_comprobar(ayudan, "Sin Mamá Osa los bots van por las piezas de la misión")
+				< inicio[compa.name].distance_to(meta.position) - 40
+			var f: Node2D = main.estacion.fogata
+			ayudan = ayudan and (f.cantidad(compa.name.to_int()) > 0 or f.colocados > 0 or not f.suelo.is_empty() or avanzo)
+		_comprobar(ayudan, "Sin Mamá Osa los bots buscan árboles y palos para la fogata")
 	jefe.set_physics_process(false)
 	jefe.activa = true
 	jefe.estado = "persiguiendo"

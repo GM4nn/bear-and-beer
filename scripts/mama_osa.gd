@@ -1,11 +1,12 @@
 extends Node2D
-## Jefe 1: Mamá Osa (GDD sección 4). Llega cuando los oseznos comen. Tiene 3
-## fases según su vida y sube de fase de golpe si rompen la olla o le pegan a
-## un osezno. La controla el anfitrión; los demás solo reciben su estado.
+## Jefe 1: Mamá Osa (GDD sección 4). Tres fases normales y una ultra final.
+## Romper la olla o pegar a un osezno acelera las fases normales.
+## La controla el anfitrión; los demás solo reciben su estado.
 
 const VIDA_BASE := 300
 var alto_botella := 170.0
 const VIDA_POR_JUGADOR := 200
+const VIDA_ULTRA := 0.5 # Fracción de la vida máxima anterior; sin ajustes en el lobby.
 const VELOCIDADES := [150.0, 175.0, 200.0]
 const ESPERA_ESPECIAL := [7.0, 5.0, 3.5]
 const ESPECIALES := [["agarre"], ["embestida", "agarre", "rugido"], ["embestida", "piso", "agarre", "lago", "rugido"]]
@@ -82,6 +83,7 @@ var activa := false
 var vida := 1
 var vida_max := 1
 var fase := 1
+var ultra: Node2D
 ## Veces que la hicieron enfurecer (olla rota u osezno golpeado).
 var enojo := 0
 var estado := "dormida"
@@ -129,6 +131,13 @@ func _ready() -> void:
 	_estrellas.position = CABEZA
 	_estrellas.visible = false
 	visual.add_child(_estrellas)
+	_crear_ultra.call_deferred()
+
+
+func _crear_ultra() -> void:
+	ultra = preload("res://scripts/osa_ultra.gd").new()
+	ultra.name = "UltraOsa"
+	get_parent().add_child(ultra)
 
 
 # Arma las animaciones con los cuadros sueltos de arte/mama_osa/<nombre>/0.png, 1.png...
@@ -152,31 +161,64 @@ func _cargar_animaciones() -> void:
 func texto() -> String:
 	if estado == "derrotada":
 		return "¡Vencieron a Mamá Osa! Recuperaron unas chelas. Fin de la Zona 1 (por ahora)."
+	if fase == 4:
+		return "¡ULTRA FASE! Esquiven la garra; salten el barrido.\n¡Golpeen la mano cuando queda apoyada!"
 	var olla: int = _estacion().vida_olla
 	return "¡Peleen contra Mamá Osa!\nProtejan la olla y no les peguen a los oseznos, o se enfurece.\n%s" % (
 		"Olla: %d" % olla if olla > 0 else "Olla rota")
 
 
 func nombre_y_fase() -> String:
+	if fase == 4:
+		return "Mamá Osa  ·  ULTRA FASE"
 	return "Mamá Osa  ·  Fase %d%s" % [fase, "  (furiosa)" if enojo > 0 else ""]
 
 
 ## La llama el anfitrión cuando un jugador le pega.
 func golpeada(_dir_golpe: int, quien: Node2D) -> void:
-	if not activa or estado in ["llegando", "lago", "derrotada"]:
+	if not multiplayer.is_server() or not puede_recibir_golpe():
 		return
 	var dano: int = mini(vida, quien.dano_actual())
 	get_tree().get_first_node_in_group("partida").sumar(quien.name.to_int(), "dano_jefe", dano)
 	vida = maxi(vida - dano, 0)
 	if vida == 0:
-		_cambiar("derrotada", 0.0)
-		altura = 0.0
-		print("¡Mamá Osa fue derrotada!")
+		_agotar_vida()
+
+
+func puede_recibir_golpe() -> bool:
+	if not activa or estado in ["llegando", "lago", "derrotada"]:
+		return false
+	return fase != 4 or (is_instance_valid(ultra) and ultra.activa and ultra.vulnerable)
+
+
+func _agotar_vida() -> void:
+	altura = 0.0
+	if fase < 4:
+		# Antes de los resultados hay una última fase, con su propio tramo de vida.
+		get_tree().get_first_node_in_group("partida").abeja_musculosa.cancelar()
+		if is_instance_valid(_agarrado):
+			_agarrado.aturdimiento = 0
+			_agarrado._aplicar_empujon.rpc(mirando, 0.25)
+		_agarrado = null
+		_golpeados.clear()
+		for jugador in get_tree().get_nodes_in_group("jugadores"):
+			jugador.combo.reiniciar()
+		fase = 4
+		vida_max = maxi(1, roundi(vida_max * VIDA_ULTRA))
+		vida = vida_max
+		ancho = 90.0
+		alto_botella = 120.0
+		estado = "ultra"
+		ultra.iniciar()
+		return
+	estado = "derrotada"
+	ultra.terminar.rpc()
+	print("¡Mamá Osa fue derrotada!")
 
 
 ## La llama el anfitrión cuando rompen la olla o le pegan a un osezno.
 func enfurecer(motivo: String) -> void:
-	if not activa or estado == "derrotada" or _espera_enojo > 0.0 or enojo >= 2:
+	if not activa or fase == 4 or estado == "derrotada" or _espera_enojo > 0.0 or enojo >= 2:
 		return
 	enojo += 1
 	# Sube desde la fase actual, incluso si ya avanzó por el daño recibido.
@@ -186,7 +228,7 @@ func enfurecer(motivo: String) -> void:
 
 
 func _physics_process(delta: float) -> void:
-	if not multiplayer.is_server() or estado == "derrotada" or get_tree().get_first_node_in_group("partida").finalizada:
+	if not multiplayer.is_server() or fase == 4 or estado == "derrotada" or get_tree().get_first_node_in_group("partida").finalizada:
 		return
 	if not activa:
 		if _estacion().alimentados:
@@ -239,6 +281,9 @@ func _fase_por_vida() -> int:
 
 
 func _process(delta: float) -> void:
+	if fase == 4:
+		visible = false # La presentación gigante y su mano representan ahora al jefe.
+		return
 	visible = activa and estado != "lago"
 	if vida < _vida_vista:
 		_parpadeo = 0.12
@@ -450,7 +495,7 @@ func liberar_jugador(jugador: Node2D) -> void:
 ## La abeja musculosa la provocó: deja a los jugadores y se pelea con ella.
 ## La abeja dirige el pleito y la suelta con terminar_rivalidad().
 func empezar_rivalidad() -> void:
-	if not multiplayer.is_server():
+	if not multiplayer.is_server() or fase == 4:
 		return
 	if is_instance_valid(_agarrado):
 		_agarrado.aturdimiento = 0
@@ -468,19 +513,18 @@ func terminar_rivalidad() -> void:
 
 ## Daño de la abeja musculosa (no cuenta en las estadísticas de los jugadores).
 func danar_por_abeja(dano: int) -> void:
-	if not multiplayer.is_server() or not activa or estado == "derrotada":
+	if not multiplayer.is_server() or fase == 4 or not activa or estado == "derrotada":
 		return
 	vida = maxi(vida - dano, 0)
 	if vida == 0:
-		_cambiar("derrotada", 0.0)
-		altura = 0.0
 		var abeja: Node2D = get_tree().get_first_node_in_group("abeja_musculosa")
 		if abeja != null and abeja.estado in ["rina_osa", "forcejeo_osa"]:
 			abeja._fin_rivalidad(self, "nadie")
+		_agotar_vida()
 
 
 func tambalear(segundos: float) -> void:
-	if not multiplayer.is_server() or not activa or estado in ["derrotada", "lago", "llegando"] \
+	if not multiplayer.is_server() or fase == 4 or not activa or estado in ["derrotada", "lago", "llegando"] \
 			or _sin_tambaleo > 0.0:
 		return
 	# Cuenta desde que se recupera, no desde que empieza a tambalearse.

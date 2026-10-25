@@ -14,6 +14,7 @@ class Prueba extends Node:
 	var fallos := 0
 	var informe := {}
 	var salida_correcta := false
+	var volumen_original := 1.0
 
 
 	func _ready() -> void:
@@ -34,6 +35,7 @@ class Prueba extends Node:
 			return
 		if not multiplayer.is_server():
 			return
+		volumen_original = get_node("/root/Audio").volumen("general")
 		cliente = multiplayer.get_peers()[0]
 		await _esperar(0.3)
 		var jugador: Node2D = main.jugadores.get_node("1")
@@ -127,6 +129,7 @@ class Prueba extends Node:
 		await _esperar(0.3)
 		_comprobar(main.get_node("UI/Menu").visible and not get_tree().paused and not main.pausa.visible,
 			"Terminar en anfitrión vuelve al menú y limpia la pausa")
+		get_node("/root/Audio").cambiar_volumen("general", volumen_original)
 		print("RESULTADO PAUSA: %d fallos" % fallos)
 		get_tree().quit(0 if fallos == 0 else 1)
 

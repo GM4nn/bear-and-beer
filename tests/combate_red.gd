@@ -251,10 +251,21 @@ class Prueba extends Node:
 		anfitrion._espera_servidor = 0
 		anfitrion.golpear(1)
 		await _esperar(0.2)
+		_comprobar(jefe.fase == 4 and not partida.finalizada,
+			"La tercera fase termina en ultra, no en resultados anticipados")
+		jefe.ultra._reloj = 100
+		var punto_ultra: Vector2 = anfitrion.position + Vector2(60, 0)
+		anfitrion._reaparecer.rpc(punto_ultra + Vector2(-60, 70))
+		jefe.ultra._atacar.rpc(punto_ultra, false, 0)
+		await _esperar(0.55)
+		anfitrion._reaparecer.rpc(punto_ultra + Vector2(-60, 0))
+		jefe.vida = 10
+		anfitrion.golpear(1)
+		await _esperar(0.2)
 		await _consultar()
 		_comprobar(partida.finalizada and informe.finalizada and informe.victoria,
 			"La derrota del jefe abre resultados en las dos instancias")
-		_comprobar(partida.estadisticas[1].dano_jefe - dano_anterior == 10,
+		_comprobar(partida.estadisticas[1].dano_jefe - dano_anterior == 20,
 			"Se registra el daño real al jefe, sin contar daño sobrante")
 		_comprobar(partida.resultados.size() == 2 and informe.resultados == 2,
 			"Los resultados incluyen a todo el equipo")

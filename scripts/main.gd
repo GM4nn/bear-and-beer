@@ -27,6 +27,13 @@ var _letreros: Dictionary = {}
 const MARGEN_LETRERO := Vector2(70, 80)
 var _pausado_por := 0
 var pausa: CanvasLayer
+var editor_controles: CanvasLayer
+var _version: Label
+var _continuar: Button
+var _cargar_guardado := false
+var _salidas_listas := {}
+var _ronda_salida := 0
+var _intervalos_replica := {}
 
 ## Para probar solo: al crear partida se unen bots. El modo de torre acompaña
 ## al anfitrión; al desactivar probar_torre_con_bots vuelven a hacer la misión.
@@ -55,6 +62,8 @@ func _ready() -> void:
 	pausa = preload("res://scripts/menu_pausa.gd").new()
 	pausa.name = "Pausa"
 	add_child(pausa)
+	pausa.controles.connect(abrir_controles)
+	pausa.guardar.connect(_guardar_partida)
 	pausa.resumir.connect(_pedir_pausa.bind(false))
 	pausa.terminar.connect(_volver_al_menu.bind(""))
 	pausa.volver_lobby.connect(_preparar_sala.bind(true))
@@ -100,6 +109,8 @@ func _ready() -> void:
 
 
 func _input(event: InputEvent) -> void:
+	if is_instance_valid(editor_controles):
+		return
 	if not event.is_action_pressed("ui_cancel"):
 		return
 	if juego.visible and not juego.get_node("Partida").finalizada:
@@ -159,12 +170,12 @@ func _process(_delta: float) -> void:
 	_dato_mision.visible = juego.visible
 	_flecha.activa = false
 	if juego.visible:
-		mision.text = jefe.texto() if jefe.activa else estacion.texto_mision()
+		mision.text = Controles.indicaciones(jefe.texto() if jefe.activa else estacion.texto_mision())
 		var clave := _sin_numeros.sub(mision.text, "", true)
 		if clave != _clave_mision:
 			_clave_mision = clave
 			_anunciar_mision()
-		_dato_mision.text = _dato_urgente()
+		_dato_mision.text = Controles.indicaciones(_dato_urgente())
 		var destino: Variant = _objetivo()
 		if destino != null:
 			_flecha.objetivo = destino
@@ -187,9 +198,14 @@ func _anunciar_mision() -> void:
 
 
 func _dato_urgente() -> String:
+	var rescate: Node = juego.get_node("Partida").rescate
+	if not rescate.listo():
+		return "Oseznos a salvo: %d/2 · Miel, torre y equilibrio" % rescate.rescatados
 	if jefe.activa:
 		var olla: int = estacion.vida_olla
 		return "" if jefe.estado == "derrotada" else ("Olla: %d" % olla if olla > 0 else "Olla rota")
+	if not estacion.fogata.encendida:
+		return "Fogata: %d/2 palos · E para colocar o participar" % estacion.fogata.colocados
 	if estacion.terminada and not estacion.alimentados:
 		return "Mamá Osa llega en %d s" % ceili(estacion.tiempo)
 	return ""
@@ -209,6 +225,35 @@ func _objetivo() -> Variant:
 	var mio: Node2D = jugadores.get_node_or_null(str(yo))
 	if mio == null:
 		return null
+	var rescate: Node = juego.get_node("Partida").rescate
+	if not rescate.listo():
+		if rescate.contiene(yo):
+			return null
+		if not rescate.cebo and mio._pieza_cargada() == null:
+			for pieza in get_tree().get_nodes_in_group("piezas"):
+				if pieza.tipo == "miel":
+					return pieza.global_position
+		return rescate.lugar()
+	var f: Node2D = estacion.fogata
+	if not f.encendida and mio._pieza_cargada() == null:
+		if f.colocados == 2 or f.cantidad(yo) > 0:
+			return estacion.global_position
+		var punto: Variant = null
+		var distancia := INF
+		for palo in f.suelo.values():
+			var d := mio.global_position.distance_to(palo)
+			if d < distancia:
+				distancia = d
+				punto = palo
+		if punto != null:
+			return punto
+		if f.faltan_palos():
+			for arbol in get_tree().get_nodes_in_group("arboles_con_palos"):
+				var d := mio.global_position.distance_to(arbol.global_position)
+				if d < distancia:
+					distancia = d
+					punto = arbol.global_position
+		return punto if punto != null else estacion.global_position
 	var cercana: Node2D = null
 	for pieza: Node2D in get_tree().get_nodes_in_group("piezas"):
 		if pieza.entregada:
@@ -238,6 +283,23 @@ func _decorar_ui() -> void:
 	_fondo_menu.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	ui.add_child(_fondo_menu)
 	ui.move_child(_fondo_menu, 0)
+	_version = Label.new()
+	_version.text = "v" + str(ProjectSettings.get_setting("application/config/version", "0.1.0-alpha"))
+	_version.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
+	_version.offset_left = -190
+	_version.offset_top = -32
+	_version.offset_right = -16
+	_version.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_version.add_theme_font_size_override("font_size", 13)
+	_version.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ui.add_child(_version)
+	_continuar = Button.new()
+	_continuar.text = "Continuar partida guardada"
+	$UI/Menu.add_child(_continuar)
+	$UI/Menu.move_child(_continuar, $UI/Menu/Crear.get_index() + 1)
+	_continuar.pressed.connect(func():
+		_cargar_guardado = true
+		_crear_partida())
 	# Logo en lugar del título de texto del menú principal.
 	var titulo: Label = $UI/Menu/Titulo
 	var logo := TextureRect.new()
@@ -263,20 +325,11 @@ func _decorar_ui() -> void:
 		ui.move_child(letrero, pantallas[nombre].get_index())
 		_letreros[letrero] = pantallas[nombre]
 	# Los controles van en Opciones, no encima de la partida.
-	var controles := Label.new()
-	controles.text = TemaUI.CONTROLES
-	controles.add_theme_font_size_override("font_size", 14)
-	controles.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	var titulo_controles := Label.new()
-	titulo_controles.text = "Controles"
-	titulo_controles.add_theme_font_override("font", TemaUI.fuente("bold"))
-	titulo_controles.add_theme_color_override("font_color", Color("ffd36b"))
-	titulo_controles.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	var volver_opciones: Control = $UI/Opciones/Volver
-	$UI/Opciones.add_child(titulo_controles)
-	$UI/Opciones.move_child(titulo_controles, volver_opciones.get_index())
+	var controles := Button.new()
+	controles.text = "Ver y modificar controles"
+	controles.pressed.connect(abrir_controles)
 	$UI/Opciones.add_child(controles)
-	$UI/Opciones.move_child(controles, volver_opciones.get_index())
+	$UI/Opciones.move_child(controles, $UI/Opciones/Volver.get_index())
 	$UI/Opciones/TextoVolumen.text = "Volumen general"
 	Audio.agregar_deslizadores($UI/Opciones, $UI/Opciones/Volumen.get_index() + 1)
 	# Misión: recuadro chico que aparece un ratito al centro cuando cambia
@@ -377,6 +430,8 @@ func _mostrar(pantalla: String) -> void:
 			DisplayServer.WINDOW_MODE_FULLSCREEN, DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN])
 	for nombre in pantallas:
 		pantallas[nombre].visible = nombre == pantalla
+	_version.visible = pantalla == "menu"
+	_continuar.visible = pantalla == "menu" and Guardado.existe()
 	_fondo_menu.visible = pantalla != "juego"
 	if pantalla != "juego":
 		Audio.musica("menu")
@@ -420,10 +475,20 @@ func _reiniciar_bosque() -> void:
 
 
 func _crear_partida() -> void:
+	Guardado.pendiente = Guardado.cargar() if _cargar_guardado else {}
+	if _cargar_guardado and Guardado.pendiente.is_empty():
+		_cargar_guardado = false
+		aviso.text = Guardado.ultimo_error
+		return
+	_cargar_guardado = false
 	Red.mi_nombre = campo_nombre.text
 	if Red.crear_partida() != OK:
 		aviso.text = "No se pudo crear la partida (¿puerto %d ocupado?)." % Red.puerto
 		return
+	for guardado in Guardado.pendiente.get("jugadores", []):
+		if guardado.get("anfitrion", false):
+			Red.pedir_color(guardado.color)
+			break
 	print("Partida creada en el puerto %d" % Red.puerto)
 	_mostrar("sala")
 	_lanzar_bot_de_ayuda()
@@ -433,6 +498,9 @@ func _crear_partida() -> void:
 func _lanzar_bot_de_ayuda() -> void:
 	# No aplica en pruebas automáticas (--auto) ni en instancias sin ventana.
 	if not bot_de_ayuda or _auto or not _pids_bots.is_empty() or DisplayServer.get_name() == "headless":
+		return
+	# En el juego exportado (para jugar con amigos) no entran bots solos.
+	if not OS.has_feature("editor"):
 		return
 	for numero in range(1, cantidad_bots + 1):
 		var args := PackedStringArray(["--headless"])
@@ -469,6 +537,28 @@ func _preparar_sala(desde_pausa: bool = false) -> void:
 	if not juego.get_node("Partida").finalizada and not (desde_pausa and get_tree().paused):
 		return
 	_regresando_sala = true
+	var bosque_saliendo := juego
+	_ronda_salida += 1
+	_salidas_listas.clear()
+	_detener_replicas.rpc(_ronda_salida)
+	# Los dueños dejan de publicar antes de que el servidor borre sus nodos.
+	# Así no llegan posiciones atrasadas a un Sincronizador que ya no existe.
+	var limite := Time.get_ticks_msec() + 5000
+	while not Array(multiplayer.get_peers()).all(func(id): return _salidas_listas.has(id)):
+		if Time.get_ticks_msec() >= limite:
+			_reanudar_replicas.rpc()
+			_regresando_sala = false
+			pausa.detalle.text = "Un compañero no respondió. Intenten volver al lobby de nuevo."
+			return
+		await get_tree().create_timer(0.05, true).timeout
+		if not is_instance_valid(bosque_saliendo) or juego != bosque_saliendo:
+			return
+	var drenaje := 0.2
+	for ms in Red.latencias.values():
+		drenaje = maxf(drenaje, clampf(float(ms) / 500.0, 0.2, 1.0))
+	await get_tree().create_timer(drenaje, true).timeout
+	if not is_instance_valid(bosque_saliendo) or juego != bosque_saliendo:
+		return
 	# Desaparecer primero los nodos replicados. Así los clientes procesan sus
 	# despawns antes de que la RPC siguiente sustituya el bosque completo.
 	for j in jugadores.get_children():
@@ -479,7 +569,34 @@ func _preparar_sala(desde_pausa: bool = false) -> void:
 
 
 @rpc("authority", "call_local", "reliable")
+func _detener_replicas(numero: int) -> void:
+	_intervalos_replica.clear()
+	for sincronizador in juego.find_children("*", "MultiplayerSynchronizer", true, false):
+		_intervalos_replica[sincronizador] = [sincronizador.replication_interval, sincronizador.delta_interval]
+		sincronizador.replication_interval = 3600.0
+		sincronizador.delta_interval = 3600.0
+	if not multiplayer.is_server():
+		_salida_lista.rpc_id(1, numero)
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _salida_lista(numero: int) -> void:
+	if multiplayer.is_server() and _regresando_sala and numero == _ronda_salida:
+		_salidas_listas[multiplayer.get_remote_sender_id()] = true
+
+
+@rpc("authority", "call_local", "reliable")
+func _reanudar_replicas() -> void:
+	for sincronizador in _intervalos_replica:
+		if is_instance_valid(sincronizador):
+			sincronizador.replication_interval = _intervalos_replica[sincronizador][0]
+			sincronizador.delta_interval = _intervalos_replica[sincronizador][1]
+	_intervalos_replica.clear()
+
+
+@rpc("authority", "call_local", "reliable")
 func _volver_sala() -> void:
+	_intervalos_replica.clear()
 	_aplicar_pausa(0)
 	# El bot de ayuda sigue marcándose listo solo en la siguiente ronda.
 	_auto = "--bot-ayuda" in OS.get_cmdline_user_args()
@@ -506,6 +623,9 @@ func _unirse() -> void:
 
 
 func _volver_al_menu(mensaje: String) -> void:
+	_regresando_sala = false
+	_ronda_salida += 1
+	_intervalos_replica.clear()
 	_aplicar_pausa(0)
 	# El bot de ayuda no se queda huérfano: si pierde la partida, se cierra.
 	if "--bot-ayuda" in OS.get_cmdline_user_args():
@@ -529,7 +649,10 @@ func _empezar_juego() -> void:
 	print("Empieza la partida: %s" % [Red.jugadores])
 	if multiplayer.is_server():
 		for id in Red.jugadores:
-			aparecedor.spawn([id, Red.jugadores[id].color, Red.jugadores[id].nombre])
+			aparecedor.spawn([id, Red.jugadores[id].color, Red.jugadores[id].nombre, Guardado.jugador_guardado(Red.jugadores[id].color)])
+		if not Guardado.pendiente.is_empty():
+			_restaurar_guardado.rpc(Guardado.pendiente)
+			Guardado.pendiente = {}
 
 
 func _salio_jugador(id: int) -> void:
@@ -551,6 +674,10 @@ func _crear_jugador(datos: Array) -> Node:
 	j.nombre = datos[2]
 	# Cada color tiene su lugar junto a la fogata para que no aparezcan encimados.
 	j.position = inicio.position + Vector2(datos[1] % 3 * 60, datos[1] / 3 * 50)
+	if datos.size() > 3 and not datos[3].is_empty():
+		Guardado.aplicar(j, datos[3], Guardado.JUGADOR)
+		j.position = datos[3].position
+		j.proteccion = 3.0
 	return j
 
 
@@ -571,3 +698,19 @@ func _pantalla_completa(activa: bool) -> void:
 
 func _volumen(valor: float) -> void:
 	Audio.cambiar_volumen("general", valor)
+
+
+func abrir_controles() -> void:
+	if is_instance_valid(editor_controles):
+		return
+	editor_controles = preload("res://scripts/panel_controles.gd").new()
+	add_child(editor_controles)
+
+
+func _guardar_partida() -> void:
+	pausa.detalle.text = Guardado.guardar(self)
+
+
+@rpc("authority", "call_local", "reliable")
+func _restaurar_guardado(datos: Dictionary) -> void:
+	Guardado.restaurar_mundo(self, datos)
