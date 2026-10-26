@@ -82,8 +82,8 @@ class Prueba extends Node:
 				break
 			await get_tree().physics_frame
 		await _esperar(0.1)
-		_comprobar(abeja.golpes_previos == abeja.GOLPES_ANTES and _j(1).vida == 100 - 10 * abeja.GOLPES_ANTES,
-			"Tres combos de boxeo (seis puños de cinco) ocurren antes del forcejeo")
+		_comprobar(abeja.golpes_previos == abeja.GOLPES_ANTES and _j(1).vida == 100 - 2 * abeja.DANO_GOLPE * abeja.GOLPES_ANTES,
+			"Tres combos de boxeo (seis puños) ocurren antes del forcejeo")
 		_comprobar(abeja.estado == "forcejeo" and _j(1).en_forcejeo(), "La abeja grande busca al jugador y traba las manos al acercarse")
 		await _foto("forcejeo_derecha")
 		await _consultar()
@@ -111,7 +111,7 @@ class Prueba extends Node:
 		for accion in ["golpear", "saltar", "parada", "lanzar", "derecha"]:
 			await _accion(accion, 0.04)
 		_comprobar(_j(1).position.distance_to(sitio) < 1 and _j(1)._numero_golpe == ataques and not _j(1).manteniendo, "E del duelo no recoge objetos y el resto de acciones queda bloqueado")
-		for i in 20:
+		for i in 60:
 			if abeja.estado != "forcejeo":
 				break
 			await _accion("agarrar", 0.04)
@@ -178,7 +178,7 @@ class Prueba extends Node:
 		await _iniciar(cliente, -1)
 		await _consultar()
 		_comprobar(informe.get("contendiente") == cliente and informe.get("anim_cliente") == "forcejeo", "También atrapa al cliente y mira correctamente hacia la izquierda")
-		for i in 15:
+		for i in 50:
 			if abeja.estado != "forcejeo":
 				break
 			_accion.rpc_id(cliente, "agarrar", 0.04)
@@ -195,7 +195,12 @@ class Prueba extends Node:
 		await _iniciar(1, -1)
 		await _foto("forcejeo_izquierda")
 		hp = _j(1).vida
-		await _esperar(6.5)
+		# Sin pulsar, la abeja gana en cuanto vacía la fuerza (0.5 / FUERZA_ABEJA s).
+		for i in 120:
+			if abeja.perdidos == 1:
+				break
+			await _esperar(0.1)
+		await _esperar(0.1)
 		_comprobar(abeja.perdidos == 1 and _j(1).vida == hp - 15 and not _j(1).en_forcejeo(), "Sin pulsar E gana la abeja: quince de daño, empujón y liberación")
 		_comprobar(abeja.estado == "paliza" and _j(1).noqueado() and not _j(1).puede_actuar(), "Perder deja al jugador K.O. y aturdido")
 		await _esperar(0.9)
@@ -207,6 +212,10 @@ class Prueba extends Node:
 		_comprobar(not _j(1).noqueado() and abeja.estado in ["buscando", "golpeando"] and abeja.golpes_previos <= 1,
 			"Al terminar la paliza vuelve a buscar pelea para otro forcejeo")
 		# Los compas pueden ayudar: a golpes también se le acaba la vida.
+		for i in 40:
+			if _j(1).puede_actuar() and _j(1)._anim_levantar <= 0:
+				break
+			await _esperar(0.1)
 		await _colocar(1)
 		abeja.cancelar()
 		abeja.vida = 8

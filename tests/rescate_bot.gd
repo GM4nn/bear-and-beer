@@ -66,15 +66,17 @@ class Prueba extends Node:
 				await esperar(0.1)
 				if r.rescatados > numero or r.estado == "regreso":
 					break
-			comprobar(r.rescatados > numero, "Los bots coordinan el equilibrio para rescatar al osezno %d" % (numero + 1))
+			comprobar(r.rescatados > numero, "Los bots siguen sus objetivos con clic sostenido y rescatan al osezno %d" % (numero + 1))
 			await esperar(0.3)
 		print("RESULTADO BOTS RESCATE: 4 comprobaciones, %d fallos" % fallos)
 		get_tree().quit(0 if fallos == 0 else 1)
 
 	func _process(_delta: float) -> void:
-		if not activo:
+		if not activo or not r.contiene(1) or r.estado not in ["preparando", "ritmo"]:
 			return
-		Input.action_release("izquierda")
-		Input.action_release("derecha")
-		if r.contiene(1) and absf(r.equilibrio) > 0.1:
-			Input.action_press("izquierda" if r.equilibrio > 0 else "derecha")
+		var reto: Node = r.reto
+		var b := InputEventMouseButton.new()
+		b.button_index = MOUSE_BUTTON_LEFT
+		b.pressed = true
+		b.position = reto.objetivo(maxi(reto._paso_mostrado, 0), 0, reto.progreso_mostrado()) * reto.LIENZO * reto._vista.scale + reto._vista.position
+		get_viewport().push_input(b, true)

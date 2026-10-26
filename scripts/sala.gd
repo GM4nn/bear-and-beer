@@ -21,9 +21,15 @@ func _ready() -> void:
 			var caja := StyleBoxFlat.new()
 			caja.bg_color = Jugador.COLORES[i]
 			if estado == "disabled":
-				caja.bg_color.a = 0.2
+				caja.bg_color = caja.bg_color.darkened(0.45)
 			caja.set_corner_radius_all(6)
 			boton.add_theme_stylebox_override(estado, caja)
+		# Si ya lo tiene alguien, el botón muestra su nombre.
+		boton.add_theme_font_size_override("font_size", 11)
+		boton.add_theme_color_override("font_disabled_color", Color.WHITE)
+		boton.add_theme_color_override("font_outline_color", Color.BLACK)
+		boton.add_theme_constant_override("outline_size", 4)
+		boton.clip_text = true
 		boton.pressed.connect(Red.pedir_color.bind(i))
 		colores.add_child(boton)
 		_botones_color.append(boton)
@@ -48,11 +54,15 @@ func _actualizar() -> void:
 	for n in Red.MAX_JUGADORES:
 		lugares.add_child(_lugar(ids[n] if n < ids.size() else 0, mi_id))
 
-	var usados := Red.jugadores.values().map(func(j): return j.color)
+	var duenos := {}
+	for datos: Dictionary in Red.jugadores.values():
+		duenos[datos.color] = str(datos.nombre)
 	for i in _botones_color.size():
 		var es_mio: bool = yo.get("color", -1) == i
-		_botones_color[i].disabled = i in usados and not es_mio
-		_botones_color[i].text = "TÚ" if es_mio else ""
+		var boton := _botones_color[i]
+		boton.disabled = duenos.has(i) and not es_mio
+		boton.text = "TÚ" if es_mio else duenos.get(i, "")
+		boton.tooltip_text = "Lo tiene %s" % duenos[i] if boton.disabled else ""
 
 	listo.set_pressed_no_signal(yo.get("listo", false))
 	listo.text = "¡Listo! (clic para cancelar)" if listo.button_pressed else "Estoy listo"

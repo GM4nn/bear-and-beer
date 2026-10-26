@@ -31,7 +31,7 @@ func _probar() -> void:
 	main.juego.get_node("Partida").rescate.rescatados = 2
 	Input.use_accumulated_input = false
 	j._reaparecer.rpc(Vector2(5900, 690))
-	bot._reaparecer.rpc(Vector2(1300, 620))
+	bot._reaparecer.rpc(Vector2(1050, 520))
 	for i in range(180):
 		await create_timer(0.1).timeout
 		if f.cantidad(bot.name.to_int()) == 2:

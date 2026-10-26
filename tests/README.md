@@ -1,6 +1,61 @@
 # Pruebas del combate y la supervivencia
 
-## Rescate de oseznos (24/10/2026)
+## Círculo compartido y validación del borde — 25/10/2026
+
+Todos ven el mismo círculo azul y trayectoria; cada jugador mantiene su propia entrada y un fallo sigue derribando al equipo. `rescate_circulo.gd`: **16 comprobaciones aprobadas**, igualdad entre seis puestos, interior y contorno válidos, exterior inválido, seis objetivos de ambos oseznos con muestras a 20 Hz y retrasos simulados de 0/120/250 ms, relojes inválidos y transición de cuenta atrás a trazado. Reproduce los falsos rechazos del antiguo desfase de 80 ms.
+
+`rescate_red.gd -- --host --puerto=7982 --borde` y dos clientes con `--join --puerto=7982 --borde`: **37 comprobaciones aprobadas** con conexiones ENet reales locales. Los tres inyectan clic y movimiento cerca del borde, lejos del punto blanco, y completan ambos oseznos; también se comprueban fallo individual, nombre replicado, pausa, guardado y desconexión. Registros `user://logs/rescate_circulo.log` y `rescate_borde_final_{0,1,2}.log`, sin errores de script. El retraso se simula en la prueba de muestras; la prueba ENet no reproduce las condiciones de Internet.
+
+## Nombre de quien falla el rescate — 25/10/2026
+
+`rescate_red.gd` comprueba además el nombre del cliente que suelta el clic, el de quien sale de la trayectoria, los nombres de quienes no completan el seguimiento mínimo y la coincidencia del aviso en ambos clientes. **37 comprobaciones aprobadas**, registros `user://logs/rescate_nombre_{0,1,2}.log`, con tres conexiones ENet y nombres distintos (`--nombre=Tono`, `--nombre=Luna`, `--nombre=Paco`). Las interrupciones ajenas al mouse conservan su aviso general. El ejecutable actualizado se exportó y arrancó con salida 0.
+
+## Oleadas de miel y reina — 25/10/2026
+
+`miel_red.gd`: un anfitrión y dos clientes ENet, todos con el mismo script y puerto, sin `--auto`. Para seis, un host y cinco clientes con `--cantidad=6` en todos. **42 comprobaciones aprobadas con tres y 42 con seis**: señuelo y premio separados, olla como precondición, todo el equipo cerca/vivo, tres oleadas, dos fusiones, reina después de la tercera, daño real de ambos puños y suelo, salto/parada, proyectil de miel, escape A/D con entradas reales del cliente, rechazo de entradas antiguas/repetidas/imposibles/pausadas, inmunidad temporal, muerte, críticos H/J/K/L, botellas, compazo, premio sincronizado, guardado y desconexión.
+
+```powershell
+godot --headless --max-fps 60 --path . --script tests/miel_red.gd -- --host --puerto=7977
+godot --headless --max-fps 60 --path . --script tests/miel_red.gd -- --join=127.0.0.1 --puerto=7977
+# Ejecutar el comando de cliente en dos terminales distintas.
+```
+
+Registros: `user://logs/miel_validada_{0,1,2}.log`, `miel_seis_{0,1,2,3,4,5}.log`. Regresiones: **37 de fogata/cocina** (`miel_regresion_fogata_final_*.log`) y **25 de la búsqueda de olla actual** (`miel_regresion_olla_*.log`). Pruebas locales; no simulan pérdida de paquetes ni latencia de Internet. Se usa y elimina `miel_prueba.cfg`, sin escribir en la ranura personal.
+
+Pelea libre de tres bots (`miel_bots_final.log`): completaron las tres oleadas y llegaron a la reina, que los derrotó. Esto verifica el recorrido de su IA sin forzar bajas ni curarlos; **no demuestra una victoria autónoma ni sustituye ajustar la dificultad con jugadores humanos**. Los tests deterministas anteriores sí verifican la derrota de la reina, recompensa y continuación de la misión.
+
+Demo manual con dos bots: `godot --path . --script tests/jugar_miel.gd -- --puerto=7978`. Empieza con rescate, fuego y olla resueltos, junto al lago. Añadir `--reina` para probar solo el miniboss. `--captura` guarda `user://miel_reina.png`, `miel_vuelo.png` y `miel_empapado.png`, y cierra sus procesos; se revisaron posición de pies, peluca, aviso de caída, recubrimiento de miel y ausencia de avisos superpuestos. `--auto-prueba` hace jugar al anfitrión como tercer bot, sin vida infinita ni daño especial, y registra el resultado de la pelea completa.
+
+## Búsqueda de la olla — 25/10/2026
+
+`olla_red.gd`: un host y dos clientes, todos con este script, mismo puerto, sin `--auto`. Para seis jugadores, lanzar un host y cinco clientes con `--cantidad=6` en todos. Verifica entrada E individual de todo el equipo, bloqueo previo al rescate/fuego y con un caído, olla oculta, cursores inválidos o de intentos anteriores, selección superior y propiedad exclusiva, arrastre y depósito, participación mínima de todos, pausa, guardado pendiente/completado, aviso de pila, derrumbe, daño a brazos/manos expuestos, reocultación, salida, éxito con entrada real de mouse, desbloqueo replicado, transporte y desconexión.
+
+**25 comprobaciones aprobadas con tres y 25 con seis**, registros `user://logs/olla_final_{0,1,2}.log` y `olla_seis_final_{0,1,2,3,4,5}.log`, sin errores de script. Con renderizador y `--captura` guarda `user://olla_interior.png`; se revisó el interior con seis pares de manos. Son pruebas locales ENet.
+
+Demo manual: `godot --path . --script tests/jugar_olla.gd -- --puerto=7962`. Abre una ventana con humano + dos bots junto a la tienda, rescate y fuego ya completados. Pulsa E para entrar, arrastra con clic izquierdo sostenido y suelta para aventar; al destapar la olla, llévala a SALIDA. La opción `--auto-prueba` después de `--` hace que también el anfitrión juegue como bot, valida el éxito y cierra las tres instancias; aprobó con `RESULTADO BOTS OLLA: todos entraron y sacaron la olla` (`olla_bots.log`). Las pruebas usan y eliminan `olla_prueba.cfg`, sin tocar la ranura personal.
+
+## Equipo completo obligatorio (25/10/2026)
+
+El rescate consulta el registro completo de jugadores, incluidos caídos y bots. Con 2–3 jugadores todos suben; con 4–6 hay tres en la torre y el resto juega junto al árbol desde el suelo. No arranca si alguien falta o necesita reanimación. La composición del equipo se comprueba durante todo el intento. Guardar/cargar limpia tanto participantes como integrantes de la torre.
+
+`rescate_red.gd` añade el caso reportado: tres conectados, uno caído y una torre de dos; rechaza el inicio, permite reanimar y exige reunir a los tres. `rescate_equipo.gd` comprueba partidas reales de **2 y 6 procesos**, con `--cantidad=2` o `--cantidad=6` en todos, un `--host` y los demás `--join=127.0.0.1`, mismo puerto y sin `--auto`. Con seis verifica compañero lejano, caído, participación desde el suelo, fallo individual que derriba la torre, arañazo al de la cima y éxito de todo el equipo.
+
+Resultado: **43 comprobaciones aprobadas** (33 con tres jugadores, 7 con seis y 3 con dos), sin errores de script en los registros finales `user://logs/rescate_todos_validado_*.log`, `rescate_seis_*.log` y `rescate_dos_*.log`. Validación en red local.
+
+## Dificultad y segundo osezno (25/10/2026)
+
+El primer rescate tiene objetivos un poco más rápidos y estrechos. El segundo cambia la secuencia y dirección, añade curvas en S y aumenta velocidad/precisión. `rescate_red.gd`: **30 comprobaciones aprobadas**, incluyendo diferencias de recorrido y dificultad, completar ambos rescates, cargar antes del segundo, pausa y caída conjunta. `rescate_bot.gd`: **4 aprobadas**, ambos oseznos con dos bots. Registros `user://logs/rescate_dificultad_{0,1,2}.log` y `rescate_dificultad_bots_{0,1,2}.log`, sin errores de script. Pruebas en red local.
+
+Prueba jugable: `godot --path . --script tests/jugar_rescate.gd -- --puerto=7946`. Prepara miel y dos bots junto al árbol. Esperar a que se forme la torre y pulsar E; mantener clic izquierdo dentro del círculo grande (incluido su contorno). El segundo se inicia con E tras completar el primero.
+
+## Rescate de ritmo con mouse (24/10/2026)
+
+`rescate_red.gd` mantiene los tres procesos ENet sin `--auto` (uno `--host`, dos `--join=127.0.0.1`, mismo puerto). Ahora inyecta eventos de mouse en coordenadas locales del viewport: **28 comprobaciones aprobadas**, incluidos clic sostenido, todos los tipos de objetivo, un solo cliente soltando mientras los demás aciertan, salida del recorrido con clic pulsado, caída de toda la torre, pausa/reintento, autoridad, guardado, daño y desconexión. Las consultas esperan convergencia de las réplicas, sin exigir orden entre canales. Registros: `user://logs/ritmo_validado_{0,1,2}.log`. Con `--capturas` y renderizador, añade `rescate_curva.png` para revisar un deslizador en marcha.
+
+`rescate_bot.gd` usa el mismo arranque que antes: host con script y dos clientes normales `--auto --bot-torre --bot-turno=1/2`. El humano de prueba envía mouse y los bots completan sus propios objetivos. **4 comprobaciones aprobadas**, registro `user://logs/ritmo_bots_0.log`. Total de esta revisión: **32**, sin errores del motor en los logs finales. El test de rescate usa `rescate_prueba.cfg`, que elimina al terminar; no escribe la ranura personal.
+
+### Registro anterior del equilibrio con teclas
+
 
 `rescate_red.gd`: tres procesos ENet con el mismo puerto, sin `--auto`, uno `--host` y dos `--join=127.0.0.1`. El anfitrión inicia al entrar los tres. **24 comprobaciones aprobadas**: altura de rama, bloqueo previo de fuego/palos, miel recuperable, torres de dos/tres, E desde un pasajero, salto individual, pausa, combate bloqueado, entradas inválidas o de espectadores, miedo por falta de corrección, arañazo únicamente al de arriba, reintentos, éxito usando entradas de teclado en cada peer, réplica del progreso, guardado en archivo de prueba y restauración, desbloqueo tras el segundo, cancelación por daño y desconexión. Registros `user://logs/rescate_final_{0,1,2}.log`; tres salidas 0. Con renderizador y `--capturas` guarda `rescate_torre.png` y `rescate_completo.png` en `user://`.
 

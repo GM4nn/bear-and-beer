@@ -24,6 +24,8 @@ var _numero_arma := 0
 var torre: Node
 var abeja_musculosa: Node2D
 var rescate: Node2D
+var busqueda_olla: Node2D
+var oleadas_miel: Node2D
 
 
 func _ready() -> void:
@@ -37,6 +39,12 @@ func _ready() -> void:
 	rescate = preload("res://scripts/rescate_oseznos.gd").new()
 	rescate.name = "RescateOseznos"
 	get_parent().get_node("Mundo").add_child(rescate)
+	busqueda_olla = preload("res://scripts/busqueda_olla.gd").new()
+	busqueda_olla.name = "BusquedaOlla"
+	get_parent().get_node("Mundo").add_child(busqueda_olla)
+	oleadas_miel = preload("res://scripts/oleadas_miel.gd").new()
+	oleadas_miel.name = "OleadasMiel"
+	get_parent().get_node("Mundo").add_child(oleadas_miel)
 	for i in SUMINISTROS.size():
 		var cerveza := CERVEZA.new()
 		cerveza.name = "Cerveza%d" % i
@@ -83,6 +91,8 @@ func terminar(gano: bool) -> void:
 	if multiplayer.is_server() and not finalizada:
 		abeja_musculosa.cancelar()
 		rescate.cancelar()
+		busqueda_olla.cancelar()
+		oleadas_miel.cancelar()
 		_cerrar.rpc(gano, estadisticas.values())
 
 

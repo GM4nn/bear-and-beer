@@ -105,6 +105,12 @@ var _dir := Vector2.ZERO
 var _lado_desvio := 0
 var _destino := Vector2.ZERO
 var _golpeados: Array = []
+## Quien le pega de frente mientras amaga el zarpazo lo aguanta parado (sin
+## salir volando) y sigue pegando; con suficientes golpes ella se desbalancea.
+var _contras := {}
+const ALCANCE_CONTRA := Vector2(150, 40)
+const GOLPES_DESBALANCE := 3
+const DANO_CONTRA := 0.6
 var _vida_vista := 1
 var _estado_oido := ""
 var _pisoton := 0.0
@@ -183,6 +189,16 @@ func golpeada(_dir_golpe: int, quien: Node2D) -> void:
 	vida = maxi(vida - dano, 0)
 	if vida == 0:
 		_agotar_vida()
+		return
+	if estado == "aviso_zarpazo":
+		var d := quien.position - position
+		if absf(d.x) <= ALCANCE_CONTRA.x and absf(d.y) <= ALCANCE_CONTRA.y:
+			_contras[quien] = int(_contras.get(quien, 0)) + 1
+			var total := 0
+			for golpes: int in _contras.values():
+				total += golpes
+			if total >= GOLPES_DESBALANCE:
+				tambalear(0.7)
 
 
 func puede_recibir_golpe() -> bool:
@@ -423,6 +439,7 @@ func _perseguir(delta: float) -> void:
 				_destino = Vector2(clampf(position.x, LAGO_X.x, LAGO_X.y), LAGO_Y)
 				_cambiar("al_lago", 1.0)
 	elif absf(d.x) <= 85.0 and absf(d.y) <= 28.0:
+		_contras.clear()
 		_cambiar("aviso_zarpazo", 0.45)
 	else:
 		# Se acomoda a un lado del jugador para alcanzarlo con el zarpazo.
@@ -658,6 +675,11 @@ func _pegar(centro: Vector2, radio_x: float, radio_y: float, dano: int, fuerza: 
 		if j in _golpeados or absf(d.x) > radio_x or absf(d.y) > radio_y:
 			continue
 		if solo_en_suelo and j.altura > 12.0:
+			continue
+		if estado == "aviso_zarpazo" and _contras.has(j):
+			# Le estaba pegando: aguanta el zarpazo sin salir volando.
+			_golpeados.append(j)
+			j.recibir_dano(ceili(dano * DANO_CONTRA))
 			continue
 		if estado in ["aviso_zarpazo", "embestida"] and j.combate.intentar_parada(self):
 			# Aunque sea inmune al tambaleo, esta carrera ya no puede pegarle otra vez.

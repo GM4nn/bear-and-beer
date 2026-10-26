@@ -131,11 +131,16 @@ func _physics_process(delta: float) -> void:
 	if j.caido or j._partida().finalizada or tiempo_vuelo > 1.6 or (tiempo_vuelo > 0.2 and j.altura <= 0):
 		_cancelar.rpc()
 		return
-	var oso: Node2D = get_tree().get_first_node_in_group("jefe")
-	if oso == null or not oso.puede_recibir_golpe():
-		return
-	var d: Vector2 = oso.position - j.position
-	if absf(d.x) > oso.ancho + 18 or absf(d.y) > 32 or j.altura < oso.altura - 30 or j.altura > oso.altura + oso.alto_botella:
+	var candidatos := get_tree().get_nodes_in_group("jefe") + get_tree().get_nodes_in_group("enemigos_oleada")
+	var oso: Node2D = null
+	for enemigo: Node2D in candidatos:
+		if not enemigo.puede_recibir_golpe():
+			continue
+		var d := enemigo.global_position - j.global_position
+		if absf(d.x) <= enemigo.ancho + 18 and absf(d.y) <= 32 and j.altura >= enemigo.altura - 30 and j.altura <= enemigo.altura + enemigo.alto_botella:
+			oso = enemigo
+			break
+	if oso == null:
 		return
 	# Consumir primero el proyectil: un mismo vuelo solo puede golpear una vez.
 	var quien = j._torre().jugador(lanzador_id)

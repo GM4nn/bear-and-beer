@@ -82,13 +82,28 @@ func _process(_delta: float) -> void:
 
 
 ## Tarjeta compacta, al estilo de Castle Crashers: retrato redondo del jugador
-## con su color, nombre y estado, barras delgadas de vida y borrachera, y chelas
-## y botellas en chiquito. Sin placa de fondo para no tapar el bosque.
+## con su color, nombre y estado, barras de vida y borrachera con su nombre, y
+## chelas y botellas. Sobre una placa café translúcida, como la de la misión.
 func _crear_tarjeta(j: Node) -> void:
+	var placa := PanelContainer.new()
+	placa.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var caja := StyleBoxFlat.new()
+	caja.bg_color = Color(0.14, 0.08, 0.04, 0.78)
+	caja.border_color = TemaUI.AMBAR
+	caja.set_border_width_all(2)
+	caja.set_corner_radius_all(10)
+	caja.content_margin_left = 8
+	caja.content_margin_right = 14
+	caja.content_margin_top = 6
+	caja.content_margin_bottom = 6
+	caja.shadow_color = Color(0, 0, 0, 0.3)
+	caja.shadow_size = 4
+	placa.add_theme_stylebox_override("panel", caja)
+	_fila.add_child(placa)
 	var panel := HBoxContainer.new()
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	panel.add_theme_constant_override("separation", 8)
-	_fila.add_child(panel)
+	panel.add_theme_constant_override("separation", 10)
+	placa.add_child(panel)
 	var medallon := Medallon.new()
 	medallon.color = j.COLORES[j.color_indice % j.COLORES.size()]
 	medallon.custom_minimum_size = Vector2(64, 64)
@@ -97,7 +112,8 @@ func _crear_tarjeta(j: Node) -> void:
 	var retrato := TextureRect.new()
 	var cara := AtlasTexture.new()
 	cara.atlas = RETRATO
-	cara.region = Rect2(68, 24, 52, 52)
+	# Cabeza completa, de frente (gorra, cara y bigote).
+	cara.region = Rect2(57, 22, 60, 60)
 	retrato.texture = cara
 	retrato.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	retrato.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -132,10 +148,10 @@ func _crear_tarjeta(j: Node) -> void:
 	estado.add_theme_color_override("font_color", Color("ffd36b"))
 	estado.size_flags_vertical = Control.SIZE_SHRINK_END
 	cabecera.add_child(estado)
-	var vida := _barra(Color("e04a3c"), 150, 10)
-	columna.add_child(vida)
-	var borracho := _barra(Color("f2a93b"), 120, 6)
-	columna.add_child(borracho)
+	var vida := _barra(Color("e04a3c"), 140, 12)
+	_con_nombre(columna, "VIDA", vida)
+	var borracho := _barra(Color("f2a93b"), 140, 8)
+	_con_nombre(columna, "PEDA", borracho)
 	var inventario := _renglon(columna)
 	inventario.add_child(_icono(ICONO_CHELA))
 	var chelas := _texto("", 14)
@@ -146,14 +162,14 @@ func _crear_tarjeta(j: Node) -> void:
 	var detalle := _texto("", 12)
 	detalle.add_theme_color_override("font_color", Color("ffd36b"))
 	columna.add_child(detalle)
-	_tarjetas[j.name] = {"panel": panel, "vida": vida, "borracho": borracho, "detalle": detalle,
+	_tarjetas[j.name] = {"panel": placa, "vida": vida, "borracho": borracho, "detalle": detalle,
 		"chelas": chelas, "botellas": botellas, "estado": estado, "retrato": retrato,
 		"vida_vista": j.vida, "golpe": 0.0}
 
 
 const ICONO_CHELA := preload("res://arte/ui/icono_chela.png")
 const ICONO_BOTELLA := preload("res://arte/ui/icono_botella.png")
-const RETRATO := preload("res://arte/jugador/quieto/0.png")
+const RETRATO := preload("res://arte/jugador/quieto_frente/0.png")
 const COLOR_JUGADOR := preload("res://arte/jugador/color_jugador.gdshader")
 const TINTA_BORDE := Color("1d120c")
 
@@ -182,6 +198,18 @@ class Aro extends Control:
 		draw_arc(centro, radio - 4.5, 0, TAU, 48, color.darkened(0.1), 5.0, true)
 		draw_arc(centro, radio - 1, 0, TAU, 48, Color("1d120c"), 2.5, true)
 		draw_arc(centro, radio - 8, 0, TAU, 48, Color("1d120c"), 2.0, true)
+
+
+## Renglón con el nombre de la barra en chiquito a la izquierda.
+func _con_nombre(padre: Control, nombre: String, barra: ProgressBar) -> void:
+	var renglon := _renglon(padre)
+	var letrero := _texto(nombre, 11)
+	letrero.custom_minimum_size.x = 34
+	letrero.add_theme_color_override("font_color", Color("e8d2a6"))
+	letrero.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	renglon.add_child(letrero)
+	barra.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	renglon.add_child(barra)
 
 
 func _renglon(padre: Control) -> HBoxContainer:

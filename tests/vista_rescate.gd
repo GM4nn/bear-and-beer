@@ -35,8 +35,14 @@ func _abrir() -> void:
 	r.cebo = true
 	await _captura("arbol")
 	r.participantes = [1]
-	r.estado = "equilibrio"
-	r.equilibrio = 0.7
+	r.torre_ids = [1]
+	r.estado = "ritmo"
+	r.avances = [0.3]
+	r.reto.set_physics_process(false)
+	r.paso = 1
+	r.tiempo = 1.8
+	r.inclinaciones = [0.6, 0.0]
+	r.fase = 0.7
 	r.miedo = 0.4
 	await _captura("tambalea")
 	r.miedo = 0.8

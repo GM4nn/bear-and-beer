@@ -7,11 +7,12 @@ extends Node2D
 const PROBABILIDAD := 0.5
 const DURACION_FUSION := 1.8
 const DURACION_FORCEJEO := 8.0
-const FUERZA_ABEJA := 0.085
+## Lo que empuja la abeja por segundo en el forcejeo: hay que machacar E rápido.
+const FUERZA_ABEJA := 0.2
 const FUERZA_PULSACION := 0.065
 const INTERVALO_PULSACION := 0.075
 const SEPARACION := 84.0
-const VIDA_MAX := 180
+const VIDA_MAX := 260
 const REPOSO_FUSION := 12.0
 const GRUPOS_GARANTIA := 2
 ## Combos de boxeo (jab + recto) antes de cada forcejeo.
@@ -19,7 +20,7 @@ const GOLPES_ANTES := 3
 const DURACION_GOLPE := 0.9
 ## Momentos del combo en que cada puño llega extendido (cuadros 4 y 7 de 12).
 const CONTACTOS := [0.3, 0.6]
-const DANO_GOLPE := 5
+const DANO_GOLPE := 7
 ## K.O.: el jugador queda tirado y la abeja le sigue pegando.
 const DURACION_PALIZA := 3.0
 const INTERVALO_PALIZA := 0.6
@@ -145,6 +146,8 @@ func _jugador(id: int) -> Node2D:
 
 func registrar_baja(sitio: Vector2) -> void:
 	if not multiplayer.is_server() or _partida().finalizada:
+		return
+	if _partida().oleadas_miel != null and _partida().oleadas_miel.activa():
 		return
 	bajas += 1
 	_bajas_recientes.append(sitio)

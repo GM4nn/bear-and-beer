@@ -49,16 +49,21 @@ var _hacia := 1.0
 func _ready() -> void:
 	add_to_group("golpeables")
 	add_to_group("enjambres")
+	# El enjambre vive en el árbol con panal más cercano: si en el editor se mueve
+	# el árbol, las abejas lo siguen solas. El panal ya viene colgado del árbol.
+	var arbol := _arbol_con_panal()
+	if arbol != null:
+		position = arbol.position - Vector2(0, 10)
 	_casa = position
 	_posicion_vista = position
-	# El panal se queda colgado en el árbol aunque el enjambre salga a perseguir.
-	var panal := Sprite2D.new()
-	var fino := preload("res://scripts/arte_objetos.gd").hd("res://arte/zona1/panal.png")
-	panal.texture = fino[0]
-	panal.scale = Vector2.ONE * 2.0 / fino[1]
-	panal.position = position + Vector2(0, 12)
-	panal.offset = Vector2(9, -44) * fino[1]
-	get_parent().add_child.call_deferred(panal)
+	if arbol == null or arbol.get_node_or_null("Panal") == null:
+		var panal := Sprite2D.new()
+		var fino := preload("res://scripts/arte_objetos.gd").hd("res://arte/zona1/panal.png")
+		panal.texture = fino[0]
+		panal.scale = Vector2.ONE * 2.0 / fino[1]
+		panal.position = position + Vector2(0, 12)
+		panal.offset = Vector2(9, -44) * fino[1]
+		get_parent().add_child.call_deferred(panal)
 	# Abejitas animadas en lugar de los cuadritos de prototipo.
 	for cuadrito in visual.get_children():
 		cuadrito.hide()
@@ -74,8 +79,24 @@ func _ready() -> void:
 		_fases.append(randf() * TAU)
 
 
+func _arbol_con_panal() -> Node2D:
+	# Primero su pareja por nombre (Abejas10 ↔ ArbolPanal10, Abejas ↔ ArbolPanal).
+	var pareja := get_parent().get_node_or_null("ArbolPanal" + str(name).trim_prefix("Abejas")) as Node2D
+	if pareja != null:
+		return pareja
+	var mejor: Node2D = null
+	for otro in get_parent().get_children():
+		if otro is Node2D and str(otro.name).begins_with("ArbolPanal") and otro.position.distance_to(position) < 250.0 				and (mejor == null or otro.position.distance_to(position) < mejor.position.distance_to(position)):
+			mejor = otro
+	return mejor
+
+
 func _physics_process(delta: float) -> void:
 	if not multiplayer.is_server() or get_tree().get_first_node_in_group("partida").finalizada:
+		return
+	var evento := get_tree().get_first_node_in_group("oleadas_miel")
+	if evento != null and evento.activa():
+		activas = false
 		return
 	for i in CANTIDAD_ABEJAS:
 		if (vivas & (1 << i)) == 0:
@@ -123,6 +144,8 @@ func _physics_process(delta: float) -> void:
 
 
 func _process(_delta: float) -> void:
+	var evento := get_tree().get_first_node_in_group("oleadas_miel")
+	visible = evento == null or not evento.activa()
 	_actualizar_objetivo_golpe()
 	if _zumbido == null:
 		_zumbido = Audio.bucle_en(self, "abejas", -8.0)
@@ -149,6 +172,8 @@ func _process(_delta: float) -> void:
 ## La llama el anfitrión cuando un jugador le pega al enjambre.
 func golpeada(dir: int, quien: Node2D) -> void:
 	var partida := get_tree().get_first_node_in_group("partida")
+	if partida.oleadas_miel != null and partida.oleadas_miel.activa():
+		return
 	if not multiplayer.is_server() or partida.finalizada or vivas == 0 or quien == null:
 		return
 	for i in CANTIDAD_ABEJAS:

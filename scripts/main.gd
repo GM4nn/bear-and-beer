@@ -85,7 +85,7 @@ func _ready() -> void:
 
 	multiplayer.connected_to_server.connect(_mostrar.bind("sala"))
 	multiplayer.connection_failed.connect(_volver_al_menu.bind("No se pudo conectar."))
-	multiplayer.server_disconnected.connect(_volver_al_menu.bind("El anfitrión cerró la partida."))
+	multiplayer.server_disconnected.connect(_volver_al_menu.bind("El anfitrión salió al menú. Pídele que cree otra partida."))
 	multiplayer.peer_disconnected.connect(_salio_jugador)
 	Red.partida_iniciada.connect(_empezar_juego)
 	Red.jugadores_cambiaron.connect(_auto_listo)
@@ -175,6 +175,12 @@ func _process(_delta: float) -> void:
 		if clave != _clave_mision:
 			_clave_mision = clave
 			_anunciar_mision()
+		# Durante el reto del rescate o en la tienda el reto ya trae su recuadro.
+		var yo: Node = jugadores.get_node_or_null(str(multiplayer.get_unique_id()))
+		if _panel_mision.visible and yo != null and (yo.en_rescate() or yo.en_tienda() or juego.get_node("Partida").oleadas_miel.activa()):
+			if _anuncio:
+				_anuncio.kill()
+			_panel_mision.hide()
 		_dato_mision.text = Controles.indicaciones(_dato_urgente())
 		var destino: Variant = _objetivo()
 		if destino != null:
@@ -186,12 +192,16 @@ func _process(_delta: float) -> void:
 func _anunciar_mision() -> void:
 	if _anuncio:
 		_anuncio.kill()
+	var local: Node = jugadores.get_node_or_null(str(multiplayer.get_unique_id()))
+	if local != null and (local.en_rescate() or local.en_tienda()):
+		_panel_mision.hide() # El reto ya da instrucciones; no superponer los textos.
+		return
 	_panel_mision.visible = true
 	_panel_mision.modulate.a = 0.0
-	_panel_mision.offset_top = 80
+	_panel_mision.offset_top = 108
 	_anuncio = create_tween()
 	_anuncio.tween_property(_panel_mision, "modulate:a", 1.0, 0.3)
-	_anuncio.parallel().tween_property(_panel_mision, "offset_top", 96.0, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	_anuncio.parallel().tween_property(_panel_mision, "offset_top", 124.0, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	_anuncio.tween_interval(DURACION_ANUNCIO)
 	_anuncio.tween_property(_panel_mision, "modulate:a", 0.0, 0.6)
 	_anuncio.tween_callback(_panel_mision.hide)
@@ -255,8 +265,14 @@ func _objetivo() -> Variant:
 					punto = arbol.global_position
 		return punto if punto != null else estacion.global_position
 	var cercana: Node2D = null
+	var busqueda: Node = juego.get_node("Partida").busqueda_olla
+	if busqueda.habilitada() and not busqueda.conseguida:
+		return null if busqueda.dentro(yo) else busqueda.lugar()
+	var miel: Node = juego.get_node("Partida").oleadas_miel
+	if miel.habilitada():
+		return null if miel.activa() else miel.CENTRO
 	for pieza: Node2D in get_tree().get_nodes_in_group("piezas"):
-		if pieza.entregada:
+		if pieza.entregada or not pieza.disponible():
 			continue
 		# Si ya la carga, toca llevarla a la fogata del lago.
 		if pieza.portador == yo:
@@ -348,7 +364,7 @@ func _decorar_ui() -> void:
 	_panel_mision.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_panel_mision.set_anchors_preset(Control.PRESET_CENTER_TOP)
 	_panel_mision.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	_panel_mision.offset_top = 96
+	_panel_mision.offset_top = 124
 	_panel_mision.theme = TemaUI.tema()
 	_panel_mision.visible = false
 	ui.add_child(_panel_mision)
@@ -431,6 +447,10 @@ func _mostrar(pantalla: String) -> void:
 	for nombre in pantallas:
 		pantallas[nombre].visible = nombre == pantalla
 	_version.visible = pantalla == "menu"
+	if pantalla == "menu":
+		# Listo para escribir el nombre sin tener que darle clic.
+		campo_nombre.grab_focus.call_deferred()
+		campo_nombre.caret_column = campo_nombre.text.length()
 	_continuar.visible = pantalla == "menu" and Guardado.existe()
 	_fondo_menu.visible = pantalla != "juego"
 	if pantalla != "juego":

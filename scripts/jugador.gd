@@ -51,10 +51,12 @@ const DANO_VOMITO_AMIGO := 8
 # Fila del cuadro (en UV) por debajo de la cual el cuerpo queda bajo el agua.
 const LINEA_AGUA := 0.585
 const BORRACHERA_POR_CERVEZA := 30.0
-const ESPERA_SOBRIEDAD := 12.0
-const BAJADA_BORRACHERA := 0.5
+## A los 15 s sin tomar se empieza a bajar, un nivel (25) cada 15 s.
+const ESPERA_SOBRIEDAD := 15.0
+const BAJADA_BORRACHERA := 25.0 / 15.0
 const CURA_CERVEZA := 35
 const TIEMPO_BEBER := 2.0
+const FRENO_BEBIENDO := 0.6
 const TIEMPO_REVIVIR := 3.0
 ## Zona para revivir a un caído: ancha, porque acostado ocupa todo su cuerpo.
 const RADIO_REVIVIR := Vector2(130.0, 55.0)
@@ -81,11 +83,13 @@ const ANIMACIONES := {
 	"quieto": [1.2, true], "caminar": [0.56, true], "saltar": [0.7, false],
 	"golpear": [0.3, false], "lanzar": [0.4, false], "rodar": [0.32, false],
 	"puno_izquierdo": [0.32, false], "parada": [0.35, false], "cabezazo": [0.40, false], "patada": [0.46, false],
-	"tomar": [2.0, false], "golpeado": [0.5, false], "caido": [0.8, false],
+	"tomar": [2.0, false], "tomar_caminar": [2.0, false], "golpeado": [0.5, false], "caido": [0.8, false],
 	"dormirse": [1.2, false], "levantarse": [1.0, false], "nadar": [1.4, true],
 	"nausea": [1.6, true], "vomitar": [1.3, false],
 	"cargar_quieto": [1.2, true], "cargar_caminar": [0.65, true],
 	"hombros_quieto": [1.2, true], "hombros_cargar": [1.2, true],
+	"hombros_atrapar": [1.1, true],
+	"llevar_quieto": [1.2, true], "llevar_caminar": [0.6, true],
 	"cargar_golpear": [0.3, false], "hombros_golpear": [0.3, false],
 	"hombros_cargar_golpear": [0.3, false],
 	"forcejeo": [0.65, true],
@@ -110,6 +114,8 @@ var borrachera := 0.0
 var caido := false
 var reanimacion := 0.0
 var arma_tiempo := 0.0
+var _aguijon: Sprite2D
+const MANOS := preload("res://scripts/manos_jugador.gd").MANOS
 var _barra_revivir: ProgressBar
 var _texto_revivir: Label
 var bebiendo := 0.0
@@ -216,6 +222,14 @@ func _ready() -> void:
 	_material.shader = SHADER_COLOR
 	_material.set_shader_parameter("color_jugador", COLORES[color_indice % COLORES.size()])
 	sprite.material = _material
+	# El aguijón va en la mano de enfrente, cuadro por cuadro (manos_jugador.gd).
+	_aguijon = Sprite2D.new()
+	_aguijon.texture = preload("res://arte/zona1/objetos/aguijon_mano.png")
+	_aguijon.centered = false
+	_aguijon.offset = Vector2(-5, -7)
+	_aguijon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	_aguijon.visible = false
+	sprite.add_child(_aguijon)
 	_chorro = _crear_chorro()
 	visual.add_child(_chorro)
 	_tecla_e = TeclaE.new()
@@ -283,7 +297,7 @@ func _physics_process(delta: float) -> void:
 			mirando = abeja.lado
 			_bot_espera -= delta
 			if Input.is_action_just_pressed("agarrar") or (not _bot.is_empty() and _bot_espera <= 0):
-				_bot_espera = 0.2
+				_bot_espera = 0.13 # Machaca como un humano rápido.
 				if multiplayer.is_server():
 					abeja.pulsar(abeja.encuentro)
 				else:
@@ -296,6 +310,24 @@ func _physics_process(delta: float) -> void:
 		_actualizar_estado(delta)
 		_procesar_cola_golpes()
 		_actualizar_golpe(delta)
+	if en_miel():
+		manteniendo = false
+		velocity = Vector2.ZERO
+		_cancelar_golpes()
+		if is_multiplayer_authority():
+			altura = 0
+			_vel_altura = 0
+			_partida().oleadas_miel.entrada_miel(self, delta)
+		return
+	if en_tienda():
+		manteniendo = false
+		velocity = Vector2.ZERO
+		if is_multiplayer_authority() and Input.is_action_just_pressed("agarrar"):
+			if multiplayer.is_server():
+				pedir_agarrar()
+			else:
+				pedir_agarrar.rpc_id(1)
+		return
 	if en_rescate():
 		manteniendo = false
 		velocity = Vector2.ZERO
@@ -342,7 +374,7 @@ func _physics_process(delta: float) -> void:
 		altura = ALTURA_SUJETO
 		_vel_altura = 0.0
 		return
-	if caido or bebiendo > 0 or dormido > 0 or vomitando > 0:
+	if caido or dormido > 0 or vomitando > 0:
 		manteniendo = false
 		velocity = Vector2.ZERO
 		# Perder el equilibrio sobre hombros también cae dormido o vomitando.
@@ -403,9 +435,12 @@ func _physics_process(delta: float) -> void:
 			dir = bot.dir
 			salta = bot.get("salta", false)
 			pega = bot.pega
-			tipo_ataque = 0
+			tipo_ataque = int(bot.get("tipo", 0))
 			agarra = bot.agarra
 			manteniendo = bot.mantiene
+			# Un bot sin nada que hacer no se queda flotando: sale a la orilla.
+			if dir == Vector2.ZERO and nadando() and modo != "torre":
+				dir = _bot_rumbo(position)
 
 		var nivel := nivel_borrachera()
 		if dir != Vector2.ZERO and nivel > 0:
@@ -415,6 +450,10 @@ func _physics_process(delta: float) -> void:
 		freno *= 0.65 if nivel == 3 else 1.0
 		if nausea > 0.0:
 			freno *= FRENO_NAUSEA
+			salta = false
+		# Se puede caminar con la chela en la boca, más despacio y sin brincar.
+		if bebiendo > 0.0:
+			freno *= FRENO_BEBIENDO
 			salta = false
 		# En el lago se nada despacio y no se puede saltar.
 		if nadando():
@@ -457,6 +496,7 @@ func _process(delta: float) -> void:
 	# La mano conserva el lado del ataque aunque se cambie de dirección andando.
 	sprite.flip_h = (_direccion_anim_golpe if _anim_golpe > 0.0 else mirando) < 0
 	_material.set_shader_parameter("destello", 0.8 if _parpadeo > 0.0 else 0.0)
+	_material.set_shader_parameter("empapado", 1.0 if en_miel() else 0.0)
 	# Al meterse al lago se va hundiendo hasta la cintura y se mece con el agua.
 	_hundido = move_toward(_hundido, 1.0 if nadando() and not caido else 0.0, delta * 4.0)
 	_sonidos()
@@ -467,11 +507,10 @@ func _process(delta: float) -> void:
 	queue_redraw()
 	_actualizar_animacion(delta)
 	_ajustar_postura_hombros()
+	_poner_aguijon()
 	if en_forcejeo():
 		sprite.position += _partida().abeja_musculosa.empuje_visual()
 	sprite.rotation = combate.tiempo_vuelo * 9.0 * combate.direccion_vuelo if combate.volando else 0.0
-	if en_rescate():
-		sprite.rotation = _partida().rescate.equilibrio * 0.10
 	if combate.volando:
 		# Girar alrededor del cuerpo, conservando su posición respecto a los pies.
 		sprite.position.y = -60
@@ -539,7 +578,9 @@ func _actualizar_animacion(delta: float) -> void:
 	_estaba_tirado = tirado
 	_anim_levantar -= delta
 
-	var cargando := _torre().encima(self) != null or en_rescate()
+	# Las animaciones de cargar traen dibujadas las piernas del de arriba: solo
+	# se usan si de verdad lleva a alguien (si no, salen piernas fantasma).
+	var cargando := _torre().encima(self) != null
 	var animacion := "quieto"
 	if caido or noqueado():
 		animacion = "caido"
@@ -560,7 +601,7 @@ func _actualizar_animacion(delta: float) -> void:
 	elif rodando > 0:
 		animacion = "rodar"
 	elif bebiendo > 0:
-		animacion = "tomar"
+		animacion = "tomar_caminar" if _moviendose > 0.0 else "tomar"
 	elif vomitando > 0:
 		animacion = "vomitar"
 	elif nausea > 0:
@@ -571,6 +612,9 @@ func _actualizar_animacion(delta: float) -> void:
 		animacion = _ataque_hombros(cargando) if apoyo_id != 0 or cargando else "lanzar"
 	elif _anim_golpe > 0.0:
 		animacion = _ataque_hombros(cargando) if _tipo_anim_golpe == 0 else combo.ANIMACIONES[_tipo_anim_golpe]
+	elif apoyo_id != 0 and _atrapando_osezno():
+		# El de hasta arriba de la torre alza los brazos para atajar al osezno.
+		animacion = "hombros_atrapar"
 	elif apoyo_id != 0:
 		animacion = "hombros_cargar" if cargando else "hombros_quieto"
 	elif cargando:
@@ -579,6 +623,20 @@ func _actualizar_animacion(delta: float) -> void:
 		animacion = "saltar"
 	elif _moviendose > 0.0:
 		animacion = "caminar"
+	# En la torre las piernas del de arriba las dibuja quien lo carga: los dos
+	# siguen con animaciones de torre (parada, patadas, combos...) o alguien se
+	# queda sin piernas o con cuatro.
+	if (apoyo_id != 0 or cargando) and not (caido or noqueado() or combate.volando) \
+			and not animacion.begins_with("hombros") and not animacion.begins_with("cargar"):
+		if _anim_golpe > 0.0 or _anim_lanzar > 0.0:
+			animacion = _ataque_hombros(cargando)
+		elif apoyo_id != 0:
+			animacion = "hombros_cargar" if cargando else "hombros_quieto"
+		else:
+			animacion = "cargar_caminar" if _moviendose > 0.0 and altura <= 0 else "cargar_quieto"
+	# Con una pieza (olla, leña, miel...) camina con los brazos al frente cargándola.
+	if animacion in ["quieto", "caminar"] and _pieza_cargada() != null:
+		animacion = "llevar_" + animacion
 	# Borracho se para y camina distinto según qué tan tomado anda.
 	if animacion in ["quieto", "caminar"] and nivel_borrachera() > 0:
 		animacion += "_%d" % nivel_borrachera()
@@ -591,11 +649,15 @@ func _actualizar_animacion(delta: float) -> void:
 			_fase_paso = 0.0
 		_animacion = animacion
 		sprite.play(animacion)
+		if animacion.begins_with("tomar"):
+			# Al empezar o dejar de caminar sigue el mismo trago, no empieza otro.
+			var trago := (1.0 - bebiendo / TIEMPO_BEBER) * sprite.sprite_frames.get_frame_count(animacion)
+			sprite.set_frame_and_progress(mini(int(trago), sprite.sprite_frames.get_frame_count(animacion) - 1), fmod(trago, 1.0))
 		if animacion.begins_with("caminar"):
 			var paso := _fase_paso * sprite.sprite_frames.get_frame_count(animacion)
 			sprite.set_frame_and_progress(int(paso), fmod(paso, 1.0))
 	# El ritmo de caminar no altera los tiempos de golpes, rodada ni bebida.
-	sprite.speed_scale = _ritmo_pasos if animacion.begins_with("caminar") or animacion == "cargar_caminar" else 1.0
+	sprite.speed_scale = _ritmo_pasos if animacion.begins_with("caminar") or animacion in ["cargar_caminar", "llevar_caminar"] else 1.0
 
 
 func _ataque_hombros(cargando: bool) -> String:
@@ -888,11 +950,16 @@ func _mostrar_dano() -> void:
 func pedir_agarrar() -> void:
 	if not multiplayer.is_server() or not _lo_pide_su_dueno():
 		return
+	if en_tienda():
+		_partida().busqueda_olla.interactuar(self)
+		return
 	var fogata := get_tree().get_first_node_in_group("fogata_cooperativa")
 	if en_fogata():
 		fogata.salir(name.to_int())
 		return
 	if not puede_actuar():
+		return
+	if _partida().busqueda_olla.interactuar(self):
 		return
 	if _partida().rescate.interactuar(self):
 		return
@@ -917,7 +984,7 @@ func pedir_agarrar() -> void:
 		return
 	var cerca: Node2D = null
 	for pieza: Node2D in get_tree().get_nodes_in_group("piezas"):
-		if pieza.portador == 0 and not pieza.entregada and _mas_cerca(pieza, cerca):
+		if pieza.disponible() and pieza.portador == 0 and not pieza.entregada and _mas_cerca(pieza, cerca):
 			cerca = pieza
 	if cerca and position.distance_to(cerca.position) <= ALCANCE_AGARRAR:
 		cerca.agarrar(name.to_int())
@@ -933,6 +1000,8 @@ func pedir_agarrar() -> void:
 func _perder_vida(dano: int) -> void:
 	if not multiplayer.is_server() or dano <= 0:
 		return
+	if en_tienda() and not _partida().busqueda_olla._golpe_interno:
+		_partida().busqueda_olla.cancelar("¡Un compa recibió daño! Salgan a ayudarlo y entren de nuevo")
 	if en_rescate():
 		_partida().rescate.cancelar()
 	combo.reiniciar()
@@ -1150,13 +1219,36 @@ func nadando() -> bool:
 	return bosque != null and bosque.dentro_del_lago(position)
 
 
+## Mano de enfrente del cuadro que se ve, relativa al jugador (para cargar cosas).
+func mano_frente() -> Vector2:
+	var anim := String(sprite.animation)
+	var carpeta := "golpear_fluido" if anim == "golpear" else anim
+	var cuadros: Array = MANOS.get(carpeta, [Vector2(124, 82)])
+	var mano: Vector2 = cuadros[mini(sprite.frame, cuadros.size() - 1)]
+	var lado := -1.0 if sprite.flip_h else 1.0
+	return visual.position + sprite.position + sprite.offset \
+		+ Vector2((mano.x - LIENZO_SPRITE * 0.5) * lado, mano.y - LIENZO_SPRITE * 0.5)
+
+
+## El aguijón sigue a la mano de enfrente del cuadro que se ve; al pegar apunta
+## derecho al frente y si no, un poco hacia arriba.
+func _poner_aguijon() -> void:
+	var anim := String(sprite.animation)
+	var carpeta := "golpear_fluido" if anim == "golpear" else anim
+	_aguijon.visible = arma_tiempo > 0 and not caido and not en_forcejeo() and not en_fogata() \
+			and not nadando() and MANOS.has(carpeta) and bebiendo <= 0
+	if not _aguijon.visible:
+		return
+	var cuadros: Array = MANOS[carpeta]
+	var mano: Vector2 = cuadros[mini(sprite.frame + (1 if anim == "forcejeo" else 0), cuadros.size() - 1)]
+	var lado := -1.0 if sprite.flip_h else 1.0
+	_aguijon.position = Vector2((mano.x - LIENZO_SPRITE * 0.5) * lado, mano.y - LIENZO_SPRITE * 0.5) + sprite.offset
+	_aguijon.scale = Vector2(lado, 1)
+	_aguijon.rotation = (0.0 if _anim_golpe > 0.0 else -0.35) * lado
+
+
 # Ondas en el agua alrededor del que nada, a la altura de la cintura.
 func _draw() -> void:
-	if arma_tiempo > 0 and not caido and not en_forcejeo() and not en_fogata() and not nadando():
-		var mano := Vector2(mirando * (44.0 if _anim_golpe > 0 else 24.0), -altura - 62.0)
-		var punta := mano + Vector2(mirando * 24.0, -12.0)
-		draw_line(mano, punta, Color("2b160b"), 8)
-		draw_line(mano, punta, Color("ffcf33"), 4)
 	if _apuntando_botella:
 		_dibujar_trayectoria()
 	if _hundido <= 0.0:
@@ -1172,7 +1264,19 @@ func puede_actuar() -> bool:
 	# Nadando solo se puede mover: ni golpear, ni rodar, ni tomar, ni lanzar.
 	return not caido and bebiendo <= 0 and dormido <= 0 and vomitando <= 0 \
 		and rodando <= 0 and aturdimiento <= 0 and not _partida().finalizada and not nadando() \
-		and nausea <= 0 and not combate.volando and not en_forcejeo() and not en_fogata() and not en_rescate()
+		and nausea <= 0 and not combate.volando and not en_forcejeo() and not en_fogata() and not en_rescate() and not en_tienda() and not en_miel()
+
+func en_miel() -> bool:
+	return _partida().oleadas_miel != null and _partida().oleadas_miel.pegados.has(name.to_int())
+
+func en_tienda() -> bool:
+	var busqueda := get_tree().get_first_node_in_group("busqueda_olla")
+	return busqueda != null and busqueda.dentro(name.to_int())
+
+
+func _atrapando_osezno() -> bool:
+	var rescate := get_tree().get_first_node_in_group("rescate_oseznos")
+	return rescate != null and rescate.estado in ["preparando", "ritmo"] 		and not rescate.torre_ids.is_empty() and rescate.torre_ids.back() == int(name)
 
 
 func en_rescate() -> bool:
@@ -1427,6 +1531,8 @@ func _actualizar_estado(delta: float) -> void:
 		nausea = maxf(nausea - delta, 0)
 		if nausea == 0:
 			_vomitar()
+	if bebiendo > 0 and nadando():
+		_interrumpir_bebida()
 	if bebiendo > 0:
 		bebiendo = maxf(bebiendo - delta, 0)
 		if bebiendo == 0:
@@ -1551,7 +1657,7 @@ func _bot_torre(delta: float) -> Dictionary:
 	if _bot_turno == 2 and compas.size() == 1:
 		var espera: Vector2 = anfitrion.position + Vector2(65, 35) - position
 		if espera.length() > 10:
-			orden.dir = espera.normalized()
+			orden.dir = _bot_rumbo(anfitrion.position + Vector2(65, 35))
 		return orden
 	var d: Vector2 = anfitrion.position - position
 	if absf(d.x) > 9 or absf(d.y) > 6:
@@ -1579,6 +1685,57 @@ func _bot_pelea() -> Dictionary:
 	}
 
 
+## Rumbo de un bot hacia `destino` sin meterse al lago: si el agua queda en
+## medio la rodea por sus esquinas, y si ya está nadando sale a la orilla. Usa el
+## contorno real del agua, así las playitas y lo que está en la orilla sí se alcanza.
+func _bot_rumbo(destino: Vector2) -> Vector2:
+	var bosque := get_tree().get_first_node_in_group("bosque")
+	if bosque == null or bosque._radio_lago == Vector2.ZERO:
+		return (destino - position).normalized()
+	var c: Vector2 = bosque._centro_lago
+	var r: Vector2 = bosque._radio_lago
+	destino = bosque.fuera_del_lago(destino)
+	if bosque.dentro_del_lago(position):
+		# Sale por la orilla más cercana, un poco hacia afuera.
+		var orilla: Vector2 = bosque.fuera_del_lago(position)
+		return (orilla + (orilla - c).normalized() * 30.0 - position).normalized()
+	if not _cruza_lago(bosque, position, destino):
+		return (destino - position).normalized()
+	var esquinas: Array[Vector2] = []
+	for lado in [-1.0, 1.0]:
+		for alto in [-1.0, 1.0]:
+			esquinas.append(c + Vector2(lado * (r.x + 90.0), alto * (r.y + 45.0)))
+	var mejor := Vector2.INF
+	var costo := INF
+	for e in esquinas:
+		if _cruza_lago(bosque, position, e):
+			continue
+		if not _cruza_lago(bosque, e, destino):
+			var total := position.distance_to(e) + e.distance_to(destino)
+			if total < costo:
+				costo = total
+				mejor = e
+			continue
+		for e2 in esquinas:
+			if e2 != e and not _cruza_lago(bosque, e, e2) and not _cruza_lago(bosque, e2, destino):
+				var total := position.distance_to(e) + e.distance_to(e2) + e2.distance_to(destino)
+				if total < costo:
+					costo = total
+					mejor = e
+	if mejor == Vector2.INF or position.distance_to(mejor) < 12.0:
+		return (destino - position).normalized()
+	return (mejor - position).normalized()
+
+
+## Si el camino recto de `a` a `b` pasa por el agua.
+func _cruza_lago(bosque: Node, a: Vector2, b: Vector2) -> bool:
+	var pasos := maxi(int(a.distance_to(b) / 20.0), 2)
+	for i in range(1, pasos):
+		if bosque.dentro_del_lago(a.lerp(b, float(i) / pasos)):
+			return true
+	return false
+
+
 func _bot_mision(delta: float) -> Dictionary:
 	_bot_espera -= delta
 	_bot_desvio -= delta
@@ -1590,6 +1747,15 @@ func _bot_mision(delta: float) -> Dictionary:
 		return _bot_rescate(delta)
 	if not estacion.fogata.encendida and _pieza_cargada() == null:
 		return _bot_palos(estacion)
+	var busqueda: Node = _partida().busqueda_olla
+	if busqueda.habilitada() and not busqueda.conseguida:
+		if _pieza_cargada() != null or position.distance_to(busqueda.lugar()) < 70:
+			if _bot_espera <= 0:
+				orden.agarra = true
+				_bot_espera = 0.7 # Evitar una segunda E antes de recibir la entrada replicada.
+		else:
+			orden.dir = _bot_rumbo(busqueda.lugar())
+		return orden
 	if estacion.alimentados:
 		# Misión cumplida: a pelear contra el jefe.
 		var jefe: Node2D = get_tree().get_first_node_in_group("jefe")
@@ -1599,7 +1765,51 @@ func _bot_mision(delta: float) -> Dictionary:
 			if _alcanza(jefe.position, mirando, jefe.ancho - 8.0):
 				orden.pega = true
 			else:
-				orden.dir = (hacia - Vector2(mirando * 60.0, 0.0)).normalized()
+				orden.dir = _bot_rumbo(jefe.position - Vector2(mirando * 60.0, 0.0))
+		return orden
+
+	var evento: Node = _partida().oleadas_miel
+	if evento.habilitada():
+		# Primero dejar la olla; después reunirse y pelear sin tocar los ingredientes.
+		if _pieza_cargada() != null:
+			orden.dir = _bot_rumbo(estacion.position)
+			if position.distance_to(estacion.position) < 60 and _bot_espera <= 0:
+				orden.agarra = true
+				_bot_espera = 0.7
+			return orden
+		for compa in get_tree().get_nodes_in_group("jugadores"):
+			if compa != self and compa.caido:
+				if companero_caido() == compa:
+					orden.mantiene = true
+				else:
+					orden.dir = _bot_rumbo(compa.position)
+				return orden
+		var enemigo: Node2D = null
+		for e in evento.enemigos:
+			if e.vivo() and (enemigo == null or position.distance_to(e.position) < position.distance_to(enemigo.position)):
+				enemigo = e
+		if enemigo != null:
+			mirando = 1 if enemigo.position.x >= position.x else -1
+			if enemigo.estado == "boxeo" and enemigo.tiempo > 0.32 and enemigo.tiempo < 0.48 and combate.espera_parada <= 0:
+				if multiplayer.is_server():
+					combate.pedir_parada(mirando)
+				else:
+					combate.pedir_parada.rpc_id(1, mirando)
+			if enemigo.estado == "vuelo" and enemigo.tiempo < 2:
+				orden.dir = Vector2(-1 if position.x < enemigo.destino.x else 1, 0)
+			elif _alcanza(enemigo.position, mirando, enemigo.ancho):
+				orden.pega = enemigo.puede_recibir_golpe()
+				orden.tipo = combo.paso
+				# Los bots no pegan atravesando a un compa: buscan un costado libre.
+				for compa in get_tree().get_nodes_in_group("jugadores"):
+					if compa != self and not compa.caido and _alcanza(compa.position, mirando) and absf(compa.altura - altura) < ALTURA_GOLPE:
+						orden.pega = false
+						orden.dir = _bot_rumbo(enemigo.position + Vector2(mirando * 65, 20 if _bot_turno % 2 == 0 else -20))
+						break
+			else:
+				orden.dir = _bot_rumbo(enemigo.position - Vector2(mirando * 50, 0))
+		else:
+			orden.dir = _bot_rumbo(evento.CENTRO) if position.distance_to(evento.CENTRO) > 65 else Vector2.ZERO
 		return orden
 
 	var destino: Vector2 = estacion.position
@@ -1615,7 +1825,7 @@ func _bot_mision(delta: float) -> Dictionary:
 		else:
 			var libre: Node2D = null
 			for pieza: Node2D in get_tree().get_nodes_in_group("piezas"):
-				if pieza.portador == 0 and not pieza.entregada and _mas_cerca(pieza, libre):
+				if pieza.disponible() and pieza.portador == 0 and not pieza.entregada and _mas_cerca(pieza, libre):
 					libre = pieza
 			if libre == null:
 				return orden
@@ -1635,7 +1845,7 @@ func _bot_mision(delta: float) -> Dictionary:
 	if _bot_desvio <= 0.0 and get_real_velocity().length() < 20.0:
 		_bot_desvio = 0.7
 		_bot_lado = Vector2(0.0, [-1.0, 1.0].pick_random()) if absf(d.x) > absf(d.y) else Vector2([-1.0, 1.0].pick_random(), 0.0)
-	orden.dir = _bot_lado if _bot_desvio > 0.3 else d.normalized()
+	orden.dir = _bot_lado if _bot_desvio > 0.3 else _bot_rumbo(destino)
 	return orden
 
 
@@ -1663,7 +1873,7 @@ func _bot_rescate(delta: float) -> Dictionary:
 		if _bot_desvio <= 0 and get_real_velocity().length() < 20:
 			_bot_desvio = 0.7
 			_bot_lado = Vector2(0, -1 if _bot_turno % 2 == 0 else 1)
-		orden.dir = _bot_lado if _bot_desvio > 0.3 else diferencia.normalized()
+		orden.dir = _bot_lado if _bot_desvio > 0.3 else _bot_rumbo(destino)
 	return orden
 
 
@@ -1681,6 +1891,9 @@ func _bot_palos(estacion: Node2D) -> Dictionary:
 				destino = punto
 		if mejor == INF and f.faltan_palos():
 			for candidato in get_tree().get_nodes_in_group("arboles_con_palos"):
+				# Sin panal: las abejas no lo dejarían juntar palos.
+				if str(candidato.name).contains("Panal") or candidato.name == "ArbolRescate":
+					continue
 				var d := position.distance_to(candidato.position)
 				if d < mejor:
 					mejor = d
@@ -1691,7 +1904,10 @@ func _bot_palos(estacion: Node2D) -> Dictionary:
 		# Un solo bot toma un papel; el otro queda libre para que pruebe el humano.
 		return orden
 	var d := destino - position
-	if d.length() < 35:
+	# Para golpear el árbol hay que quedar a su misma profundidad (el golpe no
+	# alcanza a más de ~28 px arriba o abajo).
+	var llego := absf(d.x) < 30 and absf(d.y) < 10 if arbol != null else d.length() < 35
+	if llego:
 		if arbol != null:
 			mirando = 1
 			orden.pega = true
@@ -1702,7 +1918,7 @@ func _bot_palos(estacion: Node2D) -> Dictionary:
 		if _bot_desvio <= 0 and get_real_velocity().length() < 20:
 			_bot_desvio = 0.7
 			_bot_lado = Vector2(0, -1 if _bot_turno % 2 == 0 else 1)
-		orden.dir = _bot_lado if _bot_desvio > 0.3 else d.normalized()
+		orden.dir = _bot_lado if _bot_desvio > 0.3 else _bot_rumbo(destino)
 	return orden
 
 

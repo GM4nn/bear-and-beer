@@ -102,6 +102,10 @@ func lugar_oseznos() -> Vector2:
 
 ## Solo la llama el anfitrión, cuando alguien suelta una pieza.
 func intentar_entregar(pieza: Node2D, desde: Vector2) -> bool:
+	if not pieza.disponible():
+		return false
+	if pieza.tipo == "miel" and not get_tree().get_first_node_in_group("partida").oleadas_miel.completada:
+		return false
 	if not fogata.habilitada():
 		return false
 	if desde.distance_to(position) > RADIO or pieza.tipo == "lena" or not NECESARIAS.has(pieza.tipo):
@@ -114,7 +118,7 @@ func intentar_entregar(pieza: Node2D, desde: Vector2) -> bool:
 func texto_mision() -> String:
 	var rescate := get_tree().get_first_node_in_group("rescate_oseznos")
 	if rescate != null and not rescate.listo():
-		return "Rescaten a los oseznos: %d/2\n%s\nTorre de 2 o 3 · E para atajar · %s/%s para equilibrarse" % [rescate.rescatados, rescate.mensaje, Controles.tecla("izquierda"), Controles.tecla("derecha")]
+		return "Rescaten a los oseznos: %d/2\n%s\nEquipo completo junto al árbol · torre de hasta 3 · E para empezar · todos siguen los objetivos" % [rescate.rescatados, rescate.mensaje]
 	if alimentados:
 		return "¡Los oseznos comieron y ya lloran por su mamá! Mamá Osa viene en camino."
 	if _susto > 0.0:
@@ -126,6 +130,12 @@ func texto_mision() -> String:
 		return "Cocinen la papilla: mantengan E\njunto a la fogata (si la sueltan, se baja)\nAvance: %d%%" % (progreso * 100.0)
 	if not fogata.encendida:
 		return "Fogata del lago · Palos colocados: %d/2\n%s" % [fogata.colocados, fogata.mensaje]
+	var busqueda := get_tree().get_first_node_in_group("busqueda_olla")
+	if busqueda != null and not busqueda.conseguida:
+		return "Busquen la olla en la tienda del campamento\n%s" % busqueda.mensaje
+	var miel := get_tree().get_first_node_in_group("oleadas_miel")
+	if miel != null and not miel.completada:
+		return miel.mensaje
 	var ya := entregadas()
 	var partes := []
 	for tipo in NECESARIAS:

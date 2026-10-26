@@ -28,12 +28,13 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	_tiempo_visual += delta
 	var estacion := get_tree().get_first_node_in_group("estacion")
-	visible = not (entregada and estacion != null and estacion.completa())
+	visible = disponible() and not (entregada and estacion != null and estacion.completa())
 	var quien: Node2D = get_node_or_null("../Jugadores/%d" % portador) if portador else null
 	if quien:
-		# La lleva en las manos, por delante del cuerpo.
+		# La lleva en las manos, por delante del cuerpo: el fondo un poco abajo de
+		# las manos, para que la abrace.
 		position = quien.position + Vector2(0, 1)
-		visual.position = Vector2(quien.mirando * 34.0, -46.0 - quien.altura)
+		visual.position = quien.mano_frente() + Vector2(-4.0 * quien.mirando, 17.0)
 	else:
 		visual.position = Vector2.ZERO
 	_sprite.position.y = 0 if quien or entregada else sin(_tiempo_visual * 2.5) * 1.5
@@ -42,7 +43,16 @@ func _process(delta: float) -> void:
 
 # Las tres siguientes solo las llama el anfitrión.
 
+func disponible() -> bool:
+	if tipo == "miel":
+		var p := get_tree().get_first_node_in_group("partida")
+		return p == null or not p.rescate.cebo or p.oleadas_miel != null and p.oleadas_miel.completada
+	var busqueda := get_tree().get_first_node_in_group("busqueda_olla")
+	return tipo != "olla" or busqueda != null and busqueda.conseguida
+
 func agarrar(id: int) -> void:
+	if not multiplayer.is_server() or not disponible():
+		return
 	_estado.rpc(id, position, false)
 
 
@@ -51,6 +61,8 @@ func soltar(donde: Vector2) -> void:
 
 
 func entregar(donde: Vector2) -> void:
+	if not multiplayer.is_server() or not disponible():
+		return
 	_estado.rpc(0, donde, true)
 
 

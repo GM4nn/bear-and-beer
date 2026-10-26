@@ -16,9 +16,9 @@ var _luz_calida: ShaderMaterial
 var _azar := RandomNumberGenerator.new()
 var _rayos: Array[Polygon2D] = []
 ## Árboles que se reparten (los del panal conservan el original).
-const ARBOLES := ["arbol2", "arbol_encino", "arbol_pino", "arbol_jacaranda"]
+const ARBOLES := ["arbol2", "arbol_encino", "arbol_jacaranda"]
 ## Especies de los árboles sin panal de la fila de la orilla, por turnos.
-const ARBOLES_FILA := ["arbol_encino", "arbol_pino", "arbol_jacaranda"]
+const ARBOLES_FILA := ["arbol_encino", "arbol_jacaranda"]
 ## Ancho del mundo que se decora (un poco más que los límites de la cámara).
 const ANCHO_MUNDO := 7400.0
 ## Altura media de la orilla del bosque: arriba de ella ya no se camina.
@@ -28,49 +28,114 @@ const ORILLA := 238.0
 func _ready() -> void:
 	add_to_group("bosque")
 	_luz_calida = _material_atardecer(2)
-	for nodo in $Suelo.get_children():
-		nodo.hide()
 	_azar.seed = 20261018
+	# La decoración vive en la escena (bosque.tscn) para poder acomodarla en el
+	# editor. Si falta (escena vieja), se crea aquí; herramientas/hornear_bosque.gd
+	# la guarda en la escena.
+	if not has_node("Muro"):
+		crear_decorado()
+	_recoger_decorado()
+	_poner_limite_arriba()
+	# Animación del fuego (solo en el juego; en el editor se ve el dibujo quieto).
+	var fogata_base: Node = $Mundo/Fogata.get_node_or_null("Arte")
+	if fogata_base:
+		fogata_base.hide()
+	$Mundo/Fogata.add_child(ARTE.animado({"arder": "res://arte/zona1/fogata"}, 3, 8))
+	var fuego: Node2D = load("res://scripts/fogata_visual.gd").new()
+	fuego.name = "AnimacionFuego"
+	$Mundo/Fogata.add_child(fuego)
+
+
+## Crea toda la decoración (suelo, muro del bosque, árboles vestidos, lago,
+## adornos, primer plano) como nodos dentro de la escena.
+func crear_decorado() -> void:
+	for nombre in ["BosqueLejano", "Pasto", "Camino"]:
+		var viejo := $Suelo.get_node_or_null(nombre)
+		if viejo:
+			viejo.hide()
 	_poner_suelo()
 	# Muro de árboles cercano en vez de montañas y cielo: el claro ocupa casi
 	# toda la pantalla y el cielo apenas se asoma entre las copas.
 	_capa("Muro", "muro_bosque", 0.7, 3, -160, -20)
 	_poner_rayos()
 	_poner_orilla()
-	_poner_limite_arriba()
-	# Los árboles van en el claro (bosque.tscn), parejos: uno arriba y otro abajo
-	# del camino, alternando sin panal y con panal; los sin panal rotan de especie.
-	var lisos := $Mundo.get_children().filter(func(o): return str(o.name).begins_with("Arbol") and not str(o.name).contains("Panal"))
-	lisos.sort_custom(func(a, b): return a.position.x < b.position.x)
-	for objeto in $Mundo.get_children():
-		var nombre := str(objeto.name)
-		if nombre.begins_with("Arbol"):
-			var panal := nombre.contains("Panal")
-			var imagen: String = "arbol2" if panal else ARBOLES_FILA[lisos.find(objeto) % ARBOLES_FILA.size()]
-			var arbol := _vestir(objeto, imagen, 3)
-			arbol.flip_h = int(objeto.position.x / 406.0) % 2 == 0
-			_arboles.append(arbol)
-		elif nombre.begins_with("Roca"):
-			_vestir(objeto, ["roca", "roca2", "roca3"][nombre.to_int() % 3], 2)
+	var adornos := Node2D.new()
+	adornos.name = "Adornos"
+	adornos.y_sort_enabled = true
+	$Mundo.add_child(adornos)
+	var decoracion := Node2D.new()
+	decoracion.name = "Decoracion"
+	$Suelo.add_child(decoracion)
+	_vestir_arboles_y_rocas()
 	_vestir($Mundo/Carpa, "carpa", 3)
 	_vestir($Mundo/HieleraVacia, "hielera", 2)
-	var fogata_base := _vestir($Mundo/Fogata, "fogata", 3)
-	fogata_base.hide()
-	$Mundo/Fogata.add_child(preload("res://scripts/arte_objetos.gd").animado({"arder": "res://arte/zona1/fogata"}, 3, 8))
+	_vestir($Mundo/Fogata, "fogata", 3)
 	for parte in ["Poste", "Tabla"]:
 		$Mundo/Cartel.get_node(parte).hide()
-	var cartel := preload("res://scripts/arte_objetos.gd").estatico("cartel", 2)
+	var cartel := ARTE.estatico("cartel", 2)
+	cartel.name = "Arte"
 	$Mundo/Cartel.add_child(cartel)
 	$Mundo/Cartel/Texto.z_index = 1
 	$Mundo/Cartel/Texto.position = Vector2(-50, -80)
 	$Mundo/Cartel/Texto.size = Vector2(100, 26)
 	$Mundo/Cartel/Texto.add_theme_font_size_override("font_size", 14)
-	var fuego: Node2D = load("res://scripts/fogata_visual.gd").new()
-	fuego.name = "AnimacionFuego"
-	$Mundo/Fogata.add_child(fuego)
 	_vestir_lago()
+	_poner_tulares()
 	_poner_adornos()
 	_poner_primer_plano()
+
+
+# Los árboles del claro alternan sin panal y con panal; los sin panal rotan de
+# especie. Cada árbol con panal lleva su panal colgado (sus abejas lo buscan).
+func _vestir_arboles_y_rocas() -> void:
+	var lisos := $Mundo.get_children().filter(func(o): return str(o.name).begins_with("Arbol") and not str(o.name).contains("Panal"))
+	lisos.sort_custom(func(a, b): return a.position.x < b.position.x)
+	for objeto in $Mundo.get_children():
+		var nombre := str(objeto.name)
+		if nombre.begins_with("Arbol") and nombre != "ArbolRescate" and objeto.get_node_or_null("Arte") == null:
+			var panal := nombre.contains("Panal")
+			var imagen: String = "arbol2" if panal else ARBOLES_FILA[maxi(lisos.find(objeto), 0) % ARBOLES_FILA.size()]
+			var arbol := _vestir(objeto, imagen, 3)
+			arbol.flip_h = int(objeto.position.x / 406.0) % 2 == 0
+			if panal:
+				_colgar_panal(objeto)
+		elif nombre.begins_with("Roca") and objeto.get_node_or_null("Arte") == null:
+			_vestir(objeto, ["roca", "roca2", "roca3"][nombre.to_int() % 3], 2)
+
+
+func _colgar_panal(arbol: Node2D) -> void:
+	var panal := Sprite2D.new()
+	panal.name = "Panal"
+	var fino := ARTE.hd("res://arte/zona1/panal.png")
+	panal.texture = fino[0]
+	panal.scale = Vector2.ONE * 2.0 / fino[1]
+	panal.position = Vector2(0, 2)
+	panal.offset = Vector2(9, -44) * fino[1]
+	panal.add_to_group("panal", true)
+	arbol.add_child(panal)
+
+
+# En el juego: junta lo que ya está en la escena (árboles, rayos, lago) y viste
+# lo que se haya agregado sin dibujo (por ejemplo un árbol nuevo).
+func _recoger_decorado() -> void:
+	_vestir_arboles_y_rocas()
+	for objeto in $Mundo.get_children():
+		if str(objeto.name).begins_with("Arbol"):
+			var arte: Node = objeto.get_node_or_null("Arte")
+			if arte is Sprite2D:
+				_arboles.append(arte)
+			for hijo in objeto.get_children():
+				if hijo is ColorRect or hijo is Label:
+					hijo.hide()
+	for hijo in $Muro.get_children():
+		if hijo is Polygon2D and hijo.has_meta("fase"):
+			_rayos.append(hijo)
+	var agua: ColorRect = $Lago/Agua
+	var forma := $Lago.get_node_or_null("Forma")
+	if forma:
+		forma.queue_free()
+	_centro_lago = $Lago.position + agua.position + agua.size * 0.5
+	_radio_lago = Vector2(agua.size.x * 0.5 - MARGEN_PLAYAS, agua.size.y * 0.5 - 20.0)
 
 
 ## Altura de la orilla del bosque en cada x: ondulada, no recta. La usan el
@@ -123,8 +188,8 @@ func _poner_rayos() -> void:
 		rayo.material = luz
 		rayo.position.x = x
 		rayo.set_meta("fase", _azar.randf() * TAU)
-		capa.add_child(rayo)
-		_rayos.append(rayo)
+		rayo.name = "Rayo"
+		capa.add_child(rayo, true)
 		x += _azar.randf_range(260, 520)
 
 
@@ -132,6 +197,9 @@ func _poner_rayos() -> void:
 # el pie del muro de árboles. Cada mata sigue la altura de la orilla en su x.
 func _poner_orilla() -> void:
 	var finas := [ARTE.hd(RUTA % "arbustos"), ARTE.hd(RUTA % "arbustos2")]
+	var orilla := Node2D.new()
+	orilla.name = "Orilla"
+	$Suelo.add_child(orilla)
 	var x := -300.0
 	var i := 0
 	while x < ANCHO_MUNDO + 300.0:
@@ -144,7 +212,8 @@ func _poner_orilla() -> void:
 		mata.flip_h = _azar.randf() < 0.5
 		var alto := mata.texture.get_height() * mata.scale.y
 		mata.position = Vector2(x, orilla_bosque(x + 256.0) + 22.0 - alto)
-		$Suelo.add_child(mata)
+		mata.name = "Arbustos"
+		orilla.add_child(mata, true)
 		x += _azar.randf_range(300, 420)
 		i += 1 + int(_azar.randf() < 0.3)
 
@@ -170,7 +239,7 @@ func _poner_limite_arriba() -> void:
 func _poner_adornos() -> void:
 	# Campamento: papel picado sobre la carpa y la fogata, sillas, mesa y asador.
 	for x in [60.0, 420.0]:
-		_adorno("papel_picado", Vector2(x + 192, orilla_bosque(x) - 40), 3, false, $Suelo)
+		_adorno("papel_picado", Vector2(x + 192, orilla_bosque(x) - 40), 3, false, $Suelo/Decoracion)
 	_adorno("sillas", Vector2(330, 380), 2)
 	_adorno("mesa", Vector2(660, 400), 2)
 	_adorno("asador", Vector2(760, 395), 2)
@@ -197,7 +266,7 @@ func _poner_adornos() -> void:
 		var py := _azar.randf_range(orilla_bosque(px) + 20, 715)
 		if _sobre_camino_o_lago(px, py, 12.0):
 			continue
-		_adorno(matitas[_azar.randi() % matitas.size()], Vector2(px, py), 2, _azar.randf() < 0.5, $Suelo)
+		_adorno(matitas[_azar.randi() % matitas.size()], Vector2(px, py), 2, _azar.randf() < 0.5, $Suelo/Decoracion)
 
 
 func _sobre_camino_o_lago(x: float, y: float, margen: float) -> bool:
@@ -218,7 +287,8 @@ func _adorno(imagen: String, pie: Vector2, escala: float, volteado := false, pad
 	dibujo.centered = false
 	dibujo.offset = Vector2(-dibujo.texture.get_width() * 0.5, -limites.end.y)
 	dibujo.position = pie
-	(padre if padre else $Mundo).add_child(dibujo)
+	dibujo.name = imagen.get_file().capitalize().replace(" ", "")
+	(padre if padre else $Mundo/Adornos).add_child(dibujo, true)
 	return dibujo
 
 
@@ -243,7 +313,8 @@ func _poner_primer_plano() -> void:
 		# Solo asoma la parte de arriba por el borde de la pantalla.
 		var asoma := _azar.randf_range(40, 70) if cual < 2 else _azar.randf_range(60, 110)
 		silueta.position = Vector2(x, 720 - asoma)
-		capa.add_child(silueta)
+		silueta.name = "Silueta"
+		capa.add_child(silueta, true)
 		x += _azar.randf_range(500, 1100)
 
 
@@ -264,10 +335,12 @@ func _vestir_lago() -> void:
 		_colores_lago_atardecer(material)
 	agua.material = material
 	$Lago/Texto.hide()
-	$Lago/Forma.queue_free()
-	_centro_lago = agua.global_position + centro
+	var forma := $Lago.get_node_or_null("Forma")
+	if forma:
+		$Lago.remove_child(forma)
+		forma.free()
+	_centro_lago = $Lago.position + agua.position + centro
 	_radio_lago = radio
-	_poner_tulares()
 
 
 func _colores_lago_atardecer(material: ShaderMaterial) -> void:
@@ -297,8 +370,9 @@ func _poner_tulares() -> void:
 			var x := _centro_lago.x + lado * (_radio_lago.x + (40.0 if arriba else 10.0))
 			var y := _centro_lago.y + (-_radio_lago.y * 0.55 if arriba else _radio_lago.y * 0.75)
 			tular.position = Vector2(x, y)
+			tular.name = "Tular"
 			# Va en Mundo para ordenarse por profundidad con los personajes.
-			$Mundo.add_child(tular)
+			$Mundo/Adornos.add_child(tular, true)
 
 
 ## Lleva un punto que cae en el agua a la orilla más cercana (para Mamá Osa,

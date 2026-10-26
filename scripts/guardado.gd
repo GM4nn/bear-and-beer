@@ -31,6 +31,8 @@ func guardar(main: Node, ruta := RUTA) -> String:
 		return "Revivan a un compañero antes de guardar."
 	var datos := {"version": VERSION, "fecha": Time.get_datetime_string_from_system(),
 		"rescate": propiedades(partida.rescate, ["rescatados", "cebo"]),
+		"olla_encontrada": partida.busqueda_olla.conseguida,
+		"miel_conseguida": partida.oleadas_miel.completada,
 		"estacion": propiedades(main.estacion, ESTACION), "jefe": propiedades(main.jefe, JEFE),
 		"jugadores": [], "piezas": {}, "cervezas": {}, "enjambres": {}, "arboles": {}, "armas": [],
 		"fogata": {"colocados": f.colocados, "encendida": f.encendida, "suelo": f.suelo.duplicate()},
@@ -96,6 +98,10 @@ func _campos(datos: Dictionary, esquema: Dictionary) -> bool:
 	return true
 
 func _validar(d: Dictionary) -> bool:
+	if d.has("miel_conseguida") and not d.miel_conseguida is bool:
+		return false
+	if d.has("olla_encontrada") and not d.olla_encontrada is bool:
+		return false
 	if d.has("rescate") and (not d.rescate is Dictionary or not _campos(d.rescate, {"rescatados": TYPE_INT, "cebo": TYPE_BOOL}) or d.rescate.rescatados not in [0, 1, 2]):
 		return false
 	if not _campos(d.estacion, {"progreso": TYPE_FLOAT, "terminada": TYPE_BOOL, "alimento": TYPE_FLOAT,
@@ -146,16 +152,26 @@ func jugador_guardado(color: int) -> Dictionary:
 	return {}
 
 func restaurar_mundo(main: Node, datos: Dictionary) -> void:
+	var miel: Node = main.juego.get_node("Partida").oleadas_miel
+	miel.cancelar()
+	miel.completada = datos.get("miel_conseguida", datos.piezas.get("Miel", {}).get("entregada", false) or datos.estacion.terminada or datos.estacion.alimentados)
+	var busqueda: Node = main.juego.get_node("Partida").busqueda_olla
+	busqueda.cancelar()
+	busqueda.conseguida = datos.get("olla_encontrada", datos.piezas.get("Olla", {}).get("entregada", false) or datos.estacion.terminada or datos.estacion.alimentados)
 	var rescate: Node = main.juego.get_node("Partida").rescate
 	# Las partidas anteriores con fuego ya habían pasado esta etapa.
 	var avance: Dictionary = datos.get("rescate", {"rescatados": 2 if datos.fogata.encendida else 0, "cebo": false})
 	aplicar(rescate, avance, ["rescatados", "cebo"])
 	rescate.estado = "esperando"
 	rescate.participantes.clear()
+	rescate.torre_ids.clear()
+	rescate.reto.limpiar()
+	rescate.paso = 0
+	rescate.avances = []
 	rescate.miedo = 0.15
 	rescate.equilibrio = 0.0
 	rescate.calma = 0.0
-	rescate.mensaje = "Miel preparada · formen una torre y pulsen E para atajar" if rescate.cebo else "Traigan miel y formen una torre de 2 o 3 compas"
+	rescate.mensaje = "Miel preparada · reúnan al equipo, formen la torre y pulsen E" if rescate.cebo else "Traigan miel y reúnan a todo el equipo junto al árbol"
 	aplicar(main.estacion, datos.estacion, ESTACION)
 	aplicar(main.jefe, datos.jefe, JEFE)
 	main.jefe._fase_anunciada = main.jefe.fase

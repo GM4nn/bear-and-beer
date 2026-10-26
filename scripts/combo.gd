@@ -29,7 +29,7 @@ func _physics_process(delta: float) -> void:
 
 
 func enemigo_valido(cosa: Node2D) -> bool:
-	return cosa.is_in_group("jefe") and cosa.puede_recibir_golpe()
+	return (cosa.is_in_group("jefe") or cosa.is_in_group("enemigos_oleada")) and cosa.puede_recibir_golpe()
 
 
 func contacto(tipo: int, cosa: Node2D) -> bool:

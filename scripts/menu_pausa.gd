@@ -57,7 +57,7 @@ func _ready() -> void:
 	boton_resumir = _boton(menu, "Resumir", func(): resumir.emit())
 	_boton(menu, "Opciones", abrir_opciones)
 	boton_guardar = _boton(menu, "Guardar partida", func(): guardar.emit())
-	_boton(menu, "Terminar partida", func(): terminar.emit())
+	_boton(menu, "Salir al menú", func(): terminar.emit())
 	boton_lobby = _boton(menu, "Volver al lobby", func(): volver_lobby.emit())
 	detalle = _texto(menu, "", 14)
 	detalle.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -109,8 +109,8 @@ func abrir(anfitrion: bool, nombre: String) -> void:
 	boton_guardar.disabled = not anfitrion
 	boton_guardar.tooltip_text = "Guarda el anfitrión en su computadora"
 	boton_lobby.disabled = not anfitrion
-	detalle.text = ("Terminar cierra la sesión para todos.\nVolver al lobby conserva el grupo." if anfitrion
-		else "Terminar te lleva al menú principal.\nEl anfitrión puede volver al lobby con el grupo.")
+	detalle.text = ("Eres el anfitrión: si sales al menú, tus compas también regresan al menú.\nVolver al lobby conserva el grupo." if anfitrion
+		else "Salir te lleva al menú principal; los demás siguen jugando.")
 	show()
 	volver()
 

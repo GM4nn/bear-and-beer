@@ -181,6 +181,9 @@ class Prueba extends Node:
 		_comprobar(estacion.get_node("ArteEstacion").fuego.visible and estacion.get_node("ArteEstacion").humo.visible, "Aparecen el fuego y humo existentes después del éxito")
 		await _captura("encendida")
 		_comprobar(not estacion.completa(), "El fuego no sustituye la olla ni la miel")
+		# Las búsquedas posteriores tienen sus propias pruebas; esta sección valida cocinar.
+		main.juego.get_node("Partida").busqueda_olla.conseguida = true
+		main.juego.get_node("Partida").oleadas_miel.completada = true
 		for pieza in get_tree().get_nodes_in_group("piezas"):
 			estacion.intentar_entregar(pieza, estacion.position)
 		_comprobar(estacion.completa(), "La olla y la miel conservan su entrega y habilitan cocinar")

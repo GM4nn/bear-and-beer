@@ -184,7 +184,7 @@ func _invalidar_impactos(id: int) -> void:
 ## el bonus completa x2 del daño total; nunca se reutilizan golpes anteriores.
 ## La olla y los oseznos no reciben este bonus de combate contra enemigos.
 func bono_impacto(compa: Node2D, objetivo: Node2D, dir: int, dano: int) -> int:
-	if not multiplayer.is_server() or get_parent().finalizada or not objetivo.is_in_group("jefe"):
+	if not multiplayer.is_server() or get_parent().finalizada or not (objetivo.is_in_group("jefe") or objetivo.is_in_group("enemigos_oleada")):
 		return 0
 	if not objetivo.puede_recibir_golpe():
 		return 0

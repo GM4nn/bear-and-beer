@@ -98,11 +98,11 @@ class Prueba extends Node:
 		var abeja: Node2D = main.juego.get_node("Partida").abeja_musculosa
 		abeja.set_physics_process(false)
 		abeja._fusionar.rpc(PackedVector2Array([j.position, j.position, j.position + Vector2(40, 0)]), 1)
-		comprobar(abeja.vida == 180, "La musculosa tiene 180 de vida")
+		comprobar(abeja.vida == abeja.VIDA_MAX and abeja.VIDA_MAX >= 180, "La musculosa tiene su vida completa (%d)" % abeja.VIDA_MAX)
 		abeja.estado = "buscando"
 		j._dano_ataque = 10
 		abeja.golpeada(1, j)
-		comprobar(abeja.vida == 170, "Un puño normal ya no acaba con la musculosa en pocos golpes")
+		comprobar(abeja.vida == abeja.VIDA_MAX - 10, "Un puño normal ya no acaba con la musculosa en pocos golpes")
 		abeja.vida = 10
 		abeja.golpeada(1, j)
 		abeja.golpeada(1, j)
